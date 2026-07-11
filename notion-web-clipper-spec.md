@@ -1,7 +1,7 @@
-# Notion Web Clipper, Reimagined — Product Spec
+# Notion Web Clipper — Product Spec
 
 > **Status:** Draft v2 — section §9 open questions resolved after round-4 interview + plugin-registry + image + drafts design.
-> **Working name:** Nova Clipper (placeholder — easy to rename).
+> **Product name:** Notion Web Clipper.
 
 ---
 

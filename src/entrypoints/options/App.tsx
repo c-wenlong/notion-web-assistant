@@ -9,17 +9,27 @@
 // in scope on first load, and concierge flows (e.g. "import config DB")
 // land as additional cards in Phase 1.5.
 
+import { useEffect } from "react";
 import AuthCard from "./components/AuthCard";
 import AIProviderCard from "./components/AIProviderCard";
 import AdvancedCard from "./components/AdvancedCard";
+import { mascotUrl } from "~/shared/branding";
+import { themeStorage } from "~/storage/items";
+import { useStorageItem } from "~/storage/react";
 
 export default function App() {
+  const { value: theme } = useStorageItem(themeStorage);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme ?? "system";
+  }, [theme]);
+
   return (
     <div className="nc-opt">
       <header className="nc-opt__head">
         <div className="nc-opt__brand" aria-hidden="true">
-          <span className="nc-opt__logo">✦</span>
-          <h1 className="nc-opt__title">Nova Clipper</h1>
+          <img className="nc-opt__mascot" src={mascotUrl} alt="" />
+          <h1 className="nc-opt__title">Notion Web Clipper</h1>
         </div>
         <p className="nc-opt__sub">
           Settings — synced across your devices, secrets stay on this one.

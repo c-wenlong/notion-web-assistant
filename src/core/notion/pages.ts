@@ -67,7 +67,7 @@ async function destinationSchema(
   });
   if (!updateResponse.ok) {
     const detail = await responseError(updateResponse);
-    throw new Error(`Nova Clipper could not add the URL column. ${detail}`);
+    throw new Error(`Notion Web Clipper could not add the URL column. ${detail}`);
   }
 
   return schema;

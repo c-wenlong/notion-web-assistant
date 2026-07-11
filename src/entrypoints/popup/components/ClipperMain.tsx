@@ -9,6 +9,7 @@ import { getAiFields } from "~/core/notion/fields";
 import { createNotionClip } from "~/core/notion/pages";
 import { getActivePageMetadata } from "~/core/page/activeTab";
 import { clipperFlowReducer, initialClipperFlow } from "~/core/clipper/flow";
+import { mascotUrl } from "~/shared/branding";
 import { useStorageItem } from "~/storage/react";
 import {
   byokOpenaiKeyStorage,
@@ -17,6 +18,7 @@ import {
   sendFullPageTextToAiStorage,
 } from "~/storage/items";
 import ReviewDraft from "./ReviewDraft";
+import SubmitAction from "./SubmitAction";
 
 export default function ClipperMain({
   onOpenSettings,
@@ -106,7 +108,16 @@ export default function ClipperMain({
     void setLastDb(id);
   }
 
-  async function saveClip() {
+  async function saveQuickClip() {
+    if (!pageUrl) throw new Error("Could not read the current page URL.");
+    return createNotionClip({
+      dataSourceId: db,
+      title: title.trim(),
+      url: pageUrl,
+    });
+  }
+
+  async function saveEnrichedClip() {
     if (!pageUrl) throw new Error("Could not read the current page URL.");
     return createNotionClip({
       dataSourceId: db,
@@ -153,7 +164,7 @@ export default function ClipperMain({
   async function approveAndSave() {
     dispatchFlow({ type: "approvalStarted" });
     try {
-      const result = await saveClip();
+      const result = await saveEnrichedClip();
       dispatchFlow({ type: "approvalSaved", pageUrl: result.pageUrl });
     } catch (reason) {
       dispatchFlow({
@@ -191,10 +202,8 @@ export default function ClipperMain({
     <div className="nc-main">
       <header className="nc-main__head">
         <div className="nc-main__brand">
-          <span className="nc-main__logo" aria-hidden="true">
-            ✦
-          </span>
-          <span className="nc-main__name">Nova Clipper</span>
+          <img className="nc-main__mascot" src={mascotUrl} alt="" />
+          <span className="nc-main__name">Notion Web Clipper</span>
         </div>
         <button
           className="nc-icon-btn"
@@ -258,16 +267,26 @@ export default function ClipperMain({
       </div>
 
       <footer className="nc-main__foot">
-        <div className="nc-analyze">
+        <div className="nc-clip-actions">
+          <SubmitAction
+            className="nc-save__btn--quick"
+            disabled={!db || !pageUrl || !title.trim() || flow.analyzing}
+            label="Quick Clip"
+            savedLabel="Clipped"
+            onSave={saveQuickClip}
+          />
+          <div className="nc-analyze">
           {flow.analysisError && <p className="nc-save__error" role="alert">{flow.analysisError}</p>}
           <button
             type="button"
-            className="nc-save__btn"
+            className="nc-save__btn nc-save__btn--smart"
             disabled={!db || !pageUrl || !title.trim() || flow.analyzing}
             onClick={() => void analyzePage()}
+            title="Prepare database fields with AI before saving"
           >
-            {flow.analyzing ? "Analyzing..." : "Analyze page"}
+            {flow.analyzing ? "Preparing..." : "Smart Clip"}
           </button>
+          </div>
         </div>
       </footer>
     </div>

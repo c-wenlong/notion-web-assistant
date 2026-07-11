@@ -10,6 +10,13 @@ export default defineConfig({
   // Pin Notion API version per spec §3.2 — header injected by the API client.
   // Manifest V3 is the default in WXT.
   manifest: ({ browser }) => ({
+    name: 'Notion Web Clipper',
+    icons: {
+      16: 'icons/16.png',
+      32: 'icons/32.png',
+      48: 'icons/48.png',
+      128: 'icons/128.png',
+    },
     // `activeTab` grants the popup access to the current page only after the
     // user opens it, which is enough to read title and URL via the content script.
     permissions: ['storage', 'activeTab'],

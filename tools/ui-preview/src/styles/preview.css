@@ -56,12 +56,10 @@ body {
   gap: 8px;
 }
 
-.preview__logo {
-  font-size: 18px;
-  background: linear-gradient(135deg, var(--preview-accent) 0%, #88b5ff 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+.preview__mascot {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
 }
 
 .preview__title {

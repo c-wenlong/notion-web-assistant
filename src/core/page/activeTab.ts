@@ -48,6 +48,6 @@ export async function getActivePageMetadata(): Promise<PageMetadata> {
     if (!metadata) throw new Error("The active page did not return usable details.");
     return metadata;
   } catch {
-    throw new Error("Nova Clipper cannot read this page. Open a regular website and try again.");
+    throw new Error("Notion Web Clipper cannot read this page. Open a regular website and try again.");
   }
 }

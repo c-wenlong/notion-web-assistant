@@ -5,9 +5,15 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 export default function SubmitAction({
   disabled,
   onSave,
+  label,
+  savedLabel,
+  className = "",
 }: {
   disabled: boolean;
   onSave: () => Promise<{ pageUrl: string }>;
+  label: string;
+  savedLabel: string;
+  className?: string;
 }) {
   const [state, setState] = useState<SaveState>("idle");
   const [savedPageUrl, setSavedPageUrl] = useState<string | null>(null);
@@ -32,12 +38,12 @@ export default function SubmitAction({
     }
   }
 
-  const label =
+  const buttonLabel =
     state === "saving"
       ? "Saving\u2026"
       : state === "saved"
-        ? "Saved \u2713"
-        : "Save to Notion";
+        ? `${savedLabel} \u2713`
+        : label;
 
   return (
     <div className="nc-save">
@@ -49,13 +55,13 @@ export default function SubmitAction({
       {state === "error" && <p className="nc-save__error" role="alert">{error}</p>}
       <button
         type="button"
-        className="nc-save__btn"
+        className={`nc-save__btn ${className}`}
         disabled={disabled || state === "saving"}
         onClick={() => {
           void onClick();
         }}
       >
-        {label}
+        {buttonLabel}
       </button>
     </div>
   );

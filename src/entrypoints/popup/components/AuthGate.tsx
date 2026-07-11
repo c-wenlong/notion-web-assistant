@@ -1,4 +1,6 @@
 // AuthGate — shown by App when no Notion token is saved.
+import { mascotUrl } from "~/shared/branding";
+
 ///
 /// Per spec §6.1 the Options page is the *persistent home* for token paste
 /// + first-run onboarding. The popup's job here is only to nudge the user
@@ -30,10 +32,8 @@ export default function AuthGate() {
   return (
     <div className="nc-auth">
       <div className="nc-auth__brand">
-        <div className="nc-auth__logo" aria-hidden="true">
-          ✦
-        </div>
-        <h1 className="nc-auth__title">Nova Clipper</h1>
+        <img className="nc-auth__mascot" src={mascotUrl} alt="" />
+        <h1 className="nc-auth__title">Notion Web Clipper</h1>
         <p className="nc-auth__sub">Finish setup to start clipping.</p>
       </div>
 

@@ -17,7 +17,7 @@ import App from "./App";
 
 const container = document.getElementById("root");
 if (!container) {
-  throw new Error("Nova Clipper popup: #root element not found in index.html");
+  throw new Error("Notion Web Clipper popup: #root element not found in index.html");
 }
 
 createRoot(container).render(

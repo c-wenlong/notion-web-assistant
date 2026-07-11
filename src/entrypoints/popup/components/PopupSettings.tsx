@@ -12,10 +12,11 @@ import {
   notionTokenStorage,
   onboardingCompletedStorage,
   sendFullPageTextToAiStorage,
+  themeStorage,
 } from "~/storage/items";
 
 type Mode = "onboarding" | "settings";
-type SettingSection = "notion" | "ai" | "privacy";
+type SettingSection = "notion" | "ai" | "privacy" | "appearance";
 type ConnectionState = "idle" | "checking" | "connected" | "error";
 
 const PROVIDERS: ReadonlyArray<{ value: ByokProvider; label: string; placeholder: string }> = [
@@ -40,6 +41,10 @@ function databaseSummary(count: number): string {
   return `${count} ${count === 1 ? "database" : "databases"} available`;
 }
 
+function capitalize(value: string): string {
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
+}
+
 export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: () => void }) {
   const { value: token, set: writeToken, remove: clearToken } = useStorageItem(notionTokenStorage);
   const { value: provider, set: writeProvider } = useStorageItem(byokProviderStorage);
@@ -48,9 +53,11 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
   const { value: openRouterKey, set: writeOpenRouterKey } = useStorageItem(byokOpenRouterKeyStorage);
   const { value: geminiKey, set: writeGeminiKey } = useStorageItem(byokGeminiKeyStorage);
   const { value: sendFullPageText, set: writeSendFullPageText } = useStorageItem(sendFullPageTextToAiStorage);
+  const { value: theme, set: writeTheme } = useStorageItem(themeStorage);
   const { set: setOnboardingCompleted } = useStorageItem(onboardingCompletedStorage);
 
   const activeProvider = provider ?? "nano";
+  const activeTheme = theme ?? "system";
   const activeProviderInfo = providerInfo(activeProvider);
   const savedKey = {
     openai: openaiKey,
@@ -260,8 +267,14 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
           </button>
         )}
         <div>
-          <p className="nc-settings__eyebrow">{isOnboarding ? "Welcome" : "Settings"}</p>
-          <h1 className="nc-settings__title">{isOnboarding ? "Set up Nova Clipper" : "Your clipper"}</h1>
+          {isOnboarding ? (
+            <>
+              <p className="nc-settings__eyebrow">Welcome</p>
+              <h1 className="nc-settings__title">Set up Notion Web Clipper</h1>
+            </>
+          ) : (
+            <h1 className="nc-settings__title">Settings</h1>
+          )}
         </div>
       </header>
 
@@ -275,7 +288,6 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
           aria-controls="popup-settings-notion"
           onClick={() => toggleSection("notion")}
         >
-          <span className="nc-settings__step" aria-hidden="true">1</span>
           <span className="nc-settings__summary">
             <span className="nc-settings__summary-title">Notion connection</span>
             <span className={`nc-settings__status ${notionState === "connected" ? "nc-settings__status--connected" : ""}`}>
@@ -347,7 +359,6 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
           aria-controls="popup-settings-ai"
           onClick={() => toggleSection("ai")}
         >
-          <span className="nc-settings__step" aria-hidden="true">2</span>
           <span className="nc-settings__summary">
             <span className="nc-settings__summary-title">AI provider</span>
             <span className={`nc-settings__status ${aiState === "connected" ? "nc-settings__status--connected" : ""}`}>
@@ -422,7 +433,6 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
           aria-controls="popup-settings-privacy"
           onClick={() => toggleSection("privacy")}
         >
-          <span className="nc-settings__step" aria-hidden="true">3</span>
           <span className="nc-settings__summary">
             <span className="nc-settings__summary-title">Privacy</span>
             <span className="nc-settings__status">{sendFullPageText ? "Full page text" : "Limited page text"}</span>
@@ -441,6 +451,40 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
               />
               <span className="nc-switch" aria-hidden="true" />
             </label>
+          </div>
+        )}
+      </section>
+
+      <section className={`nc-settings__item ${openSection === "appearance" ? "is-open" : ""}`}>
+        <button
+          type="button"
+          className="nc-settings__trigger"
+          aria-expanded={openSection === "appearance"}
+          aria-controls="popup-settings-appearance"
+          onClick={() => toggleSection("appearance")}
+        >
+          <span className="nc-settings__summary">
+            <span className="nc-settings__summary-title">Appearance</span>
+            <span className="nc-settings__status">{activeTheme === "system" ? "Use system setting" : `${capitalize(activeTheme)} mode`}</span>
+          </span>
+          <span className="nc-settings__chevron" aria-hidden="true" />
+        </button>
+        {openSection === "appearance" && (
+          <div id="popup-settings-appearance" className="nc-settings__panel">
+            <p className="nc-settings__panel-copy">Choose how Notion Web Clipper looks on this device.</p>
+            <div className="nc-settings__theme-picker" role="group" aria-label="Appearance">
+              {(["system", "light", "dark"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  className={`nc-settings__theme-option ${activeTheme === option ? "is-selected" : ""}`}
+                  aria-pressed={activeTheme === option}
+                  onClick={() => void writeTheme(option)}
+                >
+                  {capitalize(option)}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </section>

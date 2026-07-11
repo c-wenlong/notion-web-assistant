@@ -11,6 +11,7 @@ import Options from "../../../src/entrypoints/options/App";
 import { PageControls } from "./fixtures/PageControls";
 import { OptionsControls } from "./fixtures/OptionsControls";
 import { FixtureBanner } from "./fixtures/FixtureBanner";
+import { mascotUrl } from "~/shared/branding";
 
 type ViewMode = "popup" | "options";
 
@@ -21,7 +22,7 @@ export default function PreviewApp() {
     <div className="preview">
       <aside className="preview__side">
         <header className="preview__brand">
-          <span className="preview__logo">✦</span>
+          <img className="preview__mascot" src={mascotUrl} alt="" />
           <h1 className="preview__title">UI Preview</h1>
         </header>
         <p className="preview__hint">
@@ -60,7 +61,7 @@ export default function PreviewApp() {
           <div className="preview__chrome-wrap">
             <div className="preview__chrome">
               <span className="preview__dot" aria-hidden="true" />
-              <span className="preview__chrome-name">Nova Clipper ⸺ popup</span>
+              <span className="preview__chrome-name">Notion Web Clipper ⸺ popup</span>
             </div>
             <div className="preview__popup">
               <Popup />
@@ -71,7 +72,7 @@ export default function PreviewApp() {
             <div className="preview__chrome">
               <span className="preview__dot" aria-hidden="true" />
               <span className="preview__chrome-name">
-                Nova Clipper ⸺ chrome-extension://…/options.html
+                Notion Web Clipper ⸺ chrome-extension://…/options.html
               </span>
             </div>
             <div className="preview__options">
