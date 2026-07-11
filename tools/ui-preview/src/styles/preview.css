@@ -1,0 +1,321 @@
+/* Preview chrome layout. Independent of popup.css, which is imported
+   separately by main.tsx and styles the popup itself. */
+
+:root {
+  color-scheme: dark;
+  --preview-bg: #191918;
+  --preview-panel: #232221;
+  --preview-border: #2e2e2c;
+  --preview-border-strong: #3d3d39;
+  --preview-fg: #f5f4f0;
+  --preview-fg-muted: #a8a7a1;
+  --preview-fg-subtle: #76756f;
+  --preview-accent: #6da0ff;
+  --preview-radius: 6px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans,
+    Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--preview-fg);
+  background: var(--preview-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.preview {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  min-height: 100vh;
+}
+
+.preview__side {
+  padding: 20px;
+  background: var(--preview-panel);
+  border-right: 1px solid var(--preview-border);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.preview__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview__logo {
+  font-size: 18px;
+  background: linear-gradient(135deg, var(--preview-accent) 0%, #88b5ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.preview__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.preview__hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--preview-fg-muted);
+  margin: 0;
+}
+
+.preview__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.preview__ctl {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.preview__ctl-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--preview-fg-subtle);
+  font-weight: 600;
+}
+
+.preview__input,
+.preview__select,
+.preview__textarea {
+  width: 100%;
+  border: 1px solid var(--preview-border-strong);
+  border-radius: var(--preview-radius);
+  background: var(--preview-bg);
+  color: var(--preview-fg);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 6px 8px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.preview__input:focus,
+.preview__select:focus,
+.preview__textarea:focus {
+  outline: none;
+  border-color: var(--preview-accent);
+  box-shadow: 0 0 0 3px rgba(109, 160, 255, 0.22);
+}
+
+.preview__textarea {
+  font-family: ui-monospace, "SF Mono", Monaco, Menlo, Consolas, monospace;
+  resize: vertical;
+}
+
+.preview__row {
+  display: flex;
+  gap: 6px;
+}
+
+.preview__btn {
+  padding: 7px 10px;
+  border: 1px solid var(--preview-accent);
+  background: var(--preview-accent);
+  color: white;
+  border-radius: var(--preview-radius);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: filter 120ms ease, opacity 120ms ease;
+}
+.preview__btn:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+.preview__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.preview__btn--ghost {
+  border-color: var(--preview-border-strong);
+  background: transparent;
+  color: var(--preview-fg-muted);
+}
+
+.preview__status {
+  font-size: 11px;
+  color: var(--preview-fg-subtle);
+}
+
+.preview__notes {
+  font-family: ui-monospace, "SF Mono", Monaco, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--preview-border-strong);
+  border-radius: var(--preview-radius);
+  background: var(--preview-bg);
+  color: var(--preview-fg-muted);
+  white-space: pre-wrap;
+}
+
+/* Right pane */
+
+.preview__main {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Tab nav at the top of the left side panel — switches between the
+   popup view and the options view inside the preview. */
+.preview__tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--preview-border-strong);
+  border-radius: var(--preview-radius);
+  background: var(--preview-bg);
+}
+.preview__tab {
+  flex: 1;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--preview-fg-muted);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+.preview__tab:hover:not([aria-selected="true"]) {
+  color: var(--preview-fg);
+}
+.preview__tab[aria-selected="true"] {
+  background: var(--preview-accent);
+  color: white;
+}
+
+.preview__toggle-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--preview-fg-muted);
+  cursor: pointer;
+}
+.preview__toggle-inline input {
+  accent-color: var(--preview-accent);
+  cursor: pointer;
+}
+
+/* Options view — wider chrome wrapper simulates a full browser tab. */
+.preview__chrome-wrap--wide {
+  width: 720px;
+}
+.preview__options {
+  background: var(--bg-page, #ffffff);
+}
+
+.preview__banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--preview-panel);
+  border: 1px solid var(--preview-border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--preview-fg-muted);
+  max-width: 720px;
+  width: 100%;
+  overflow: hidden;
+}
+.preview__banner-label {
+  color: var(--preview-fg-subtle);
+  white-space: nowrap;
+}
+.preview__banner-url {
+  font-family: ui-monospace, "SF Mono", Monaco, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  color: var(--preview-fg);
+  background: var(--preview-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+.preview__banner-sep {
+  color: var(--preview-fg-subtle);
+}
+.preview__banner-sel {
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.preview__chrome-wrap {
+  display: flex;
+  flex-direction: column;
+  width: 360px;
+  background: var(--preview-panel);
+  border: 1px solid var(--preview-border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.preview__chrome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--preview-bg);
+  border-bottom: 1px solid var(--preview-border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--preview-fg-muted);
+}
+.preview__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--preview-accent);
+}
+.preview__chrome-name {
+  font-family: ui-monospace, "SF Mono", Monaco, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+}
+
+.preview__popup {
+  background: #ffffff;
+  color: #1f1f1f;
+}
+
+/* Force the popup inside the preview chrome to use a light theme regardless
+   of the OS preference \u2014 makes screenshotted demos deterministic. */
+.preview__popup {
+  color-scheme: light;
+}

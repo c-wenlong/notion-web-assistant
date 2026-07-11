@@ -1,0 +1,28 @@
+# Dependencies and package-manager caches
+node_modules/
+.pnpm-store/
+.pnp.*
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Generated extension and preview output
+.output/
+.wxt/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local configuration and extension signing material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crx
+
+# Editor and operating-system files
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,25 @@
+{
+  "name": "ui-preview",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Standalone Vite dev server that mounts the popup components with mocked storage + page extraction. Runs at http://127.0.0.1:5174/.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "compile": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0"
+  }
+}
