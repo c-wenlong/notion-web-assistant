@@ -13,7 +13,7 @@
     "zip": "wxt zip",
     "compile": "tsc --noEmit",
     "test": "node scripts/build-test.mjs && node --test /tmp/notion-web-assistant.test.cjs",
-    "verify": "pnpm test && pnpm compile && pnpm build && pnpm --dir tools/ui-preview compile && pnpm --dir tools/ui-preview build",
+    "verify": "pnpm test && pnpm compile && pnpm build && pnpm --dir tools/ui-preview --ignore-workspace compile && pnpm --dir tools/ui-preview --ignore-workspace build",
     "postinstall": "wxt prepare"
   },
   "dependencies": {

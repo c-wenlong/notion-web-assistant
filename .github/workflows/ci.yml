@@ -28,7 +28,9 @@ jobs:
             pnpm-lock.yaml
             tools/ui-preview/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --dir tools/ui-preview install --frozen-lockfile
+      # The preview keeps an independent lockfile beneath the root project.
+      # Install it outside the parent workspace, allowing build scripts from its frozen lockfile.
+      - run: pnpm --dir tools/ui-preview install --frozen-lockfile --ignore-workspace --config.dangerouslyAllowAllBuilds=true
       - run: pnpm verify
       - uses: actions/upload-artifact@v4
         with:
