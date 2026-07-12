@@ -15,7 +15,7 @@ import {
 } from "~/core/notion/pages";
 import { getActivePageMetadata } from "~/core/page/activeTab";
 import { clipperFlowReducer, initialClipperFlow } from "~/core/clipper/flow";
-import { mascotSpriteUrls } from "~/shared/branding";
+import { primaryMascotUrl } from "~/shared/branding";
 import { useStorageItem } from "~/storage/react";
 import {
   byokAnthropicKeyStorage,
@@ -332,9 +332,8 @@ export default function ClipperMain({
     <div className="nc-main">
       <header className="nc-main__head">
         <div className="nc-main__brand">
-          <div className="nc-main__sprites" aria-label="Notion Web Clipper">
-            {mascotSpriteUrls.map((sprite) => <img key={sprite} src={sprite} alt="" />)}
-          </div>
+          <img className="nc-main__mascot" src={primaryMascotUrl} alt="" />
+          <span className="nc-main__name">Notion Web Clipper</span>
         </div>
         <button
           className="nc-icon-btn"

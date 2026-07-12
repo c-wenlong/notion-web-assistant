@@ -151,17 +151,12 @@
   gap: 10px;
   margin-bottom: 6px;
 }
-.nc-opt__sprites {
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  height: 48px;
-}
-.nc-opt__sprites img {
-  width: 42px;
-  height: 42px;
+.nc-opt__mascot {
+  width: 38px;
+  height: 38px;
   object-fit: contain;
 }
+.nc-opt__title { margin: 0; color: var(--fg); font-size: 22px; font-weight: 600; }
 .nc-opt__sub {
   margin: 0;
   font-size: 13.5px;

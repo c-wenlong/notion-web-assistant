@@ -272,18 +272,14 @@ button {
 .nc-main__brand {
   display: flex;
   align-items: center;
+  gap: 8px;
 }
-.nc-main__sprites {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 32px;
-}
-.nc-main__sprites img {
-  width: 29px;
-  height: 29px;
+.nc-main__mascot {
+  width: 24px;
+  height: 24px;
   object-fit: contain;
 }
+.nc-main__name { font-size: 13px; font-weight: 600; }
 .nc-icon-btn,
 .nc-back-btn {
   display: grid;

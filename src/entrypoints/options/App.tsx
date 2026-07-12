@@ -13,7 +13,7 @@ import { useEffect } from "react";
 import AuthCard from "./components/AuthCard";
 import AIProviderCard from "./components/AIProviderCard";
 import AdvancedCard from "./components/AdvancedCard";
-import { mascotSpriteUrls } from "~/shared/branding";
+import { primaryMascotUrl } from "~/shared/branding";
 import { themeStorage } from "~/storage/items";
 import { useStorageItem } from "~/storage/react";
 
@@ -28,9 +28,8 @@ export default function App() {
     <div className="nc-opt">
       <header className="nc-opt__head">
         <div className="nc-opt__brand" aria-hidden="true">
-          <div className="nc-opt__sprites">
-            {mascotSpriteUrls.map((sprite) => <img key={sprite} src={sprite} alt="" />)}
-          </div>
+          <img className="nc-opt__mascot" src={primaryMascotUrl} alt="" />
+          <h1 className="nc-opt__title">Notion Web Clipper</h1>
         </div>
         <p className="nc-opt__sub">
           Settings — synced across your devices, secrets stay on this one.
