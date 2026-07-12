@@ -170,6 +170,25 @@ test("parses a fenced JSON draft from a Responses API message", () => {
   assert.equal(fields[0]?.value, "A paper summary.");
 });
 
+test("ignores Responses API reasoning metadata before the output message", () => {
+  const fields = parseOpenAiAnalysis(
+    {
+      output: [
+        { type: "reasoning", id: "rs_internal_metadata", summary: [] },
+        {
+          type: "message",
+          content: [
+            { type: "output_text", text: '{"fields":[{"id":"summary","value":"Parsed answer."}]}' },
+          ],
+        },
+      ],
+    },
+    [{ id: "summary", name: "Summary", type: "rich_text", options: [] }],
+  );
+
+  assert.equal(fields[0]?.value, "Parsed answer.");
+});
+
 test("requests a strict OpenAI schema so valid JSON cannot omit the fields array", async () => {
   const fields = [{ id: "summary", name: "Summary", type: "rich_text" as const, options: [] }];
   const result = await analyzeWithProvider({

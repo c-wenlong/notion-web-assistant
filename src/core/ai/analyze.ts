@@ -47,13 +47,7 @@ function outputText(value: unknown): string | null {
   const record = value as Record<string, unknown>;
   if (record.type === "output_text" && typeof record.text === "string") return record.text;
   if (typeof record.output_text === "string") return record.output_text;
-  for (const [key, child] of Object.entries(record)) {
-    // Response metadata such as `type: "message"` is not model content.
-    if (key === "type" || key === "role") continue;
-    const found = outputText(child);
-    if (found) return found;
-  }
-  return null;
+  return outputText(record.content) ?? outputText(record.output);
 }
 
 function fieldValue(field: NotionField, value: unknown): DraftValue {

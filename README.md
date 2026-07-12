@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://github.com/c-wenlong/notion-web-assistant/actions/workflows/ci.yml"><img src="https://github.com/c-wenlong/notion-web-assistant/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
   <a href="https://github.com/c-wenlong/notion-web-assistant/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-2f6feb.svg" alt="MIT license"></a>
-  <img src="https://img.shields.io/badge/version-1.0.1-2f6feb.svg" alt="Version 1.0.1">
+  <img src="https://img.shields.io/badge/version-1.0.2-2f6feb.svg" alt="Version 1.0.2">
   <img src="https://img.shields.io/badge/status-v1.0-16803c.svg" alt="Version 1.0">
 </p>
 
@@ -115,7 +115,7 @@ There is no automatic Chrome Web Store deployment yet. For unpacked testing, bui
 
 ## Versioning and Releases
 
-This repository follows semantic versioning. The current release is **1.0.1**. Release notes live in [CHANGELOG.md](CHANGELOG.md). The package version is also used by the generated Chrome extension manifest.
+This repository follows semantic versioning. The current release is **1.0.2**. Release notes live in [CHANGELOG.md](CHANGELOG.md). The package version is also used by the generated Chrome extension manifest.
 
 ## Contributing
 

@@ -4,6 +4,12 @@ All notable changes to Notion Web Clipper are documented in this file.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.0.2] - 2026-07-11
+
+### Fixed
+
+- Ignored Responses API reasoning metadata when locating OpenAI's structured Smart Clip answer.
+
 ## [1.0.1] - 2026-07-11
 
 ### Added
