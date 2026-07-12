@@ -1,3 +1,8 @@
 allowBuilds:
   esbuild: true
-  spawn-sync: false
+  spawn-sync: true
+overrides:
+  esbuild: 0.28.1
+  shell-quote: 1.8.4
+  tmp: 0.2.7
+  uuid: 11.1.1

@@ -9,7 +9,7 @@ export default defineConfig({
   srcDir: 'src',
   // Pin Notion API version per spec §3.2 — header injected by the API client.
   // Manifest V3 is the default in WXT.
-  manifest: ({ browser }) => ({
+  manifest: () => ({
     name: 'Notion Web Clipper',
     icons: {
       16: 'icons/16.png',
@@ -17,22 +17,16 @@ export default defineConfig({
       48: 'icons/48.png',
       128: 'icons/128.png',
     },
-    // `activeTab` grants the popup access to the current page only after the
-    // user opens it, which is enough to read title and URL via the content script.
-    permissions: ['storage', 'activeTab'],
+    // `activeTab` grants temporary access only after the user opens the popup.
+    // The popup injects the metadata reader at that point instead of running on
+    // every page in the background.
+    permissions: ['storage', 'activeTab', 'scripting'],
     host_permissions: [
       'https://api.notion.com/*',
       'https://api.openai.com/*',
       'https://api.anthropic.com/*',
       'https://openrouter.ai/api/*',
       'https://generativelanguage.googleapis.com/*',
-      'https://api.crossref.org/*',
-      'https://api.openalex.org/*',
-      'https://openlibrary.org/*',
-      'https://export.arxiv.org/*',
-      'https://api.github.com/*',
     ],
-    // queried runtime; `optional_host_permissions` lets users grant per-site.
-    optional_permissions: browser === 'firefox' ? [] : [],
   }),
 });

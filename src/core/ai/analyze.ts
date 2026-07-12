@@ -28,8 +28,14 @@ const ANALYSIS_MODEL = "gpt-5.4-mini";
 const ANTHROPIC_ANALYSIS_MODEL = "claude-haiku-4-5-20251001";
 const OPENROUTER_FREE_MODEL = "openrouter/free";
 const MAX_RICH_TEXT_LENGTH = 2000;
+const MAX_ANALYSIS_TEXT_LENGTH = 60_000;
+const MAX_ANALYSIS_FIELDS = 50;
+const MAX_FIELD_NAME_LENGTH = 160;
+const MAX_FIELD_OPTIONS = 50;
+const MAX_FIELD_OPTION_LENGTH = 120;
 
 function outputText(value: unknown): string | null {
+  if (typeof value === "string") return value;
   if (Array.isArray(value)) {
     for (const item of value) {
       const found = outputText(item);
@@ -126,26 +132,30 @@ export function approvedNotionProperties(fields: ReviewField[]): Record<string, 
   for (const field of fields) {
     switch (field.type) {
       case "rich_text":
-        if (typeof field.value === "string" && field.value) {
-          properties[field.id] = { rich_text: [{ type: "text", text: { content: field.value } }] };
-        }
+        properties[field.id] = typeof field.value === "string" && field.value
+          ? { rich_text: [{ type: "text", text: { content: field.value } }] }
+          : { rich_text: [] };
         break;
       case "number":
-        if (typeof field.value === "number") properties[field.id] = { number: field.value };
+        properties[field.id] = { number: typeof field.value === "number" ? field.value : null };
         break;
       case "checkbox":
-        if (typeof field.value === "boolean") properties[field.id] = { checkbox: field.value };
+        properties[field.id] = { checkbox: field.value === true };
         break;
       case "select":
-        if (typeof field.value === "string" && field.value) properties[field.id] = { select: { name: field.value } };
+        properties[field.id] = typeof field.value === "string" && field.value
+          ? { select: { name: field.value } }
+          : { select: null };
         break;
       case "multi_select":
-        if (Array.isArray(field.value) && field.value.length) {
-          properties[field.id] = { multi_select: field.value.map((name: string) => ({ name })) };
-        }
+        properties[field.id] = {
+          multi_select: Array.isArray(field.value) ? field.value.map((name: string) => ({ name })) : [],
+        };
         break;
       case "date":
-        if (typeof field.value === "string" && field.value) properties[field.id] = { date: { start: field.value } };
+        properties[field.id] = typeof field.value === "string" && field.value
+          ? { date: { start: field.value } }
+          : { date: null };
         break;
     }
   }
@@ -165,6 +175,23 @@ function analysisPrompt(page: PageMetadata, fields: NotionField[]): string {
     page: { title: page.title, url: page.url, text: page.text },
     fields: fields.map(({ id, name, type, options }) => ({ id, name, type, options })),
   });
+}
+
+function boundedAnalysisInput(input: AnalyzeInput): Pick<AnalyzeInput, "page" | "fields"> {
+  return {
+    page: {
+      title: input.page.title.slice(0, MAX_FIELD_NAME_LENGTH),
+      url: input.page.url.slice(0, 2_000),
+      text: input.page.text.slice(0, MAX_ANALYSIS_TEXT_LENGTH),
+    },
+    fields: input.fields.slice(0, MAX_ANALYSIS_FIELDS).map((field) => ({
+      ...field,
+      name: field.name.slice(0, MAX_FIELD_NAME_LENGTH),
+      options: field.options
+        .slice(0, MAX_FIELD_OPTIONS)
+        .map((option) => option.slice(0, MAX_FIELD_OPTION_LENGTH)),
+    })),
+  };
 }
 
 function providerName(provider: ByokProvider): string {
@@ -188,9 +215,7 @@ function aiError(provider: ByokProvider, status: number): string {
 }
 
 async function responseError(provider: ByokProvider, response: Response): Promise<never> {
-  const detail = await response.text().catch(() => "");
-  const base = aiError(provider, response.status);
-  throw new Error(detail ? `${base} ${detail.slice(0, 300)}` : base);
+  throw new Error(aiError(provider, response.status));
 }
 
 interface AnalyzeInput {
@@ -205,21 +230,23 @@ function request(input: AnalyzeInput, url: string, init: RequestInit): Promise<R
 }
 
 export async function analyzeWithOpenAi(input: AnalyzeInput): Promise<ReviewField[]> {
+  const analysis = boundedAnalysisInput(input);
   const response = await request(input, OPENAI_RESPONSES_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${input.apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: ANALYSIS_MODEL,
-      input: analysisPrompt(input.page, input.fields),
+      input: analysisPrompt(analysis.page, analysis.fields),
       text: { format: { type: "json_object" } },
     }),
   });
   if (!response.ok) return responseError("openai", response);
 
-  return parseOpenAiAnalysis((await response.json()) as OpenAiResponse, input.fields);
+  return parseOpenAiAnalysis((await response.json()) as OpenAiResponse, analysis.fields);
 }
 
 async function analyzeWithAnthropic(input: AnalyzeInput): Promise<ReviewField[]> {
+  const analysis = boundedAnalysisInput(input);
   const response = await request(input, ANTHROPIC_MESSAGES_URL, {
     method: "POST",
     headers: {
@@ -230,22 +257,23 @@ async function analyzeWithAnthropic(input: AnalyzeInput): Promise<ReviewField[]>
     body: JSON.stringify({
       model: ANTHROPIC_ANALYSIS_MODEL,
       max_tokens: 2048,
-      messages: [{ role: "user", content: analysisPrompt(input.page, input.fields) }],
+      messages: [{ role: "user", content: analysisPrompt(analysis.page, analysis.fields) }],
     }),
   });
   if (!response.ok) return responseError("anthropic", response);
 
   const payload = (await response.json()) as { content?: Array<{ type?: unknown; text?: unknown }> };
   const text = payload.content?.find((item) => item.type === "text" && typeof item.text === "string")?.text;
-  return parseAnalysisText(typeof text === "string" ? text : null, input.fields, "Anthropic");
+  return parseAnalysisText(typeof text === "string" ? text : null, analysis.fields, "Anthropic");
 }
 
 async function analyzeWithGemini(input: AnalyzeInput): Promise<ReviewField[]> {
+  const analysis = boundedAnalysisInput(input);
   const response = await request(input, GEMINI_GENERATE_URL, {
     method: "POST",
     headers: { "x-goog-api-key": input.apiKey, "Content-Type": "application/json" },
     body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: analysisPrompt(input.page, input.fields) }] }],
+      contents: [{ role: "user", parts: [{ text: analysisPrompt(analysis.page, analysis.fields) }] }],
       generationConfig: { responseMimeType: "application/json" },
     }),
   });
@@ -255,10 +283,11 @@ async function analyzeWithGemini(input: AnalyzeInput): Promise<ReviewField[]> {
     candidates?: Array<{ content?: { parts?: Array<{ text?: unknown }> } }>;
   };
   const text = payload.candidates?.[0]?.content?.parts?.find((part) => typeof part.text === "string")?.text;
-  return parseAnalysisText(typeof text === "string" ? text : null, input.fields, "Google Gemini");
+  return parseAnalysisText(typeof text === "string" ? text : null, analysis.fields, "Google Gemini");
 }
 
 async function analyzeWithOpenRouter(input: AnalyzeInput): Promise<ReviewField[]> {
+  const analysis = boundedAnalysisInput(input);
   const response = await request(input, OPENROUTER_CHAT_URL, {
     method: "POST",
     headers: {
@@ -268,7 +297,7 @@ async function analyzeWithOpenRouter(input: AnalyzeInput): Promise<ReviewField[]
     },
     body: JSON.stringify({
       model: OPENROUTER_FREE_MODEL,
-      messages: [{ role: "user", content: analysisPrompt(input.page, input.fields) }],
+      messages: [{ role: "user", content: analysisPrompt(analysis.page, analysis.fields) }],
       response_format: { type: "json_object" },
     }),
   });
@@ -278,7 +307,7 @@ async function analyzeWithOpenRouter(input: AnalyzeInput): Promise<ReviewField[]
     choices?: Array<{ message?: { content?: unknown } }>;
   };
   const text = payload.choices?.[0]?.message?.content;
-  return parseAnalysisText(typeof text === "string" ? text : null, input.fields, "OpenRouter");
+  return parseAnalysisText(typeof text === "string" ? text : null, analysis.fields, "OpenRouter");
 }
 
 export async function analyzeWithProvider({

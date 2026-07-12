@@ -436,6 +436,14 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
                 {showKey ? "Hide" : "Show"}
               </button>
             </div>
+            <a
+              className="nc-settings__link"
+              href={activeProviderInfo.keyUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              Get API key
+            </a>
             <div className="nc-settings__actions">
               <button
                 type="button"

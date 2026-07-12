@@ -32,9 +32,9 @@ token. Browser refresh is suppressed so the in-memory shim survives.
 
 ## What this app mocks
 
-- `wxt/storage` is aliased to `src/shims/wxt-storage.ts` — an in-memory polyfill that drops the popup's `useStorageItem` calls into a per-tab Map. Cross-context tab sync is intentionally absent (single tab).
+- `wxt/utils/storage` is aliased to `src/shims/wxt-storage.ts` — an in-memory polyfill that drops the popup's `useStorageItem` calls into a per-tab Map. Cross-context tab sync is intentionally absent (single tab).
 - `notionTokenStorage`, `lastUsedDbStorage`, etc. all write through the shim, so the popup's UI behaves like a connected session.
-- Page URL + selection come from preview-only storage items defined in `src/fixtures/fixture-storage.ts`. They mimic what `content.ts` will deliver in a future milestone.
+- Page URL + selection come from preview-only storage items defined in `src/fixtures/fixture-storage.ts`. They mimic the popup's active-tab metadata flow.
 
 ## Layout
 
@@ -45,7 +45,6 @@ The browser tab is split:
 
 ## Important
 
-This project is for **UI iteration only**. It does not call Notion, does not run
-the recipe registry logic, and does not load any extension-vendor APIs. Edit
+This project is for **UI iteration only**. It does not call Notion or extension-vendor APIs. Edit
 `src/entrypoints/popup/**` in the parent project; the preview's HMR picks it
 up immediately.

@@ -1,7 +1,7 @@
 // ClipperMain — shown after onboarding. The destination picker lists the
 // data sources shared with the current Notion integration.
 
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { analyzeWithProvider, approvedNotionProperties, type DraftValue, type ReviewField } from "~/core/ai/analyze";
 import { listNotionDataSources } from "~/core/notion/dataSources";
@@ -36,6 +36,12 @@ type PendingDuplicate = {
   source: "quick" | "review" | "smart";
 };
 
+type SmartOverwrite = {
+  pageId: string;
+  originalUrl: string;
+  dataSourceId: string;
+};
+
 export default function ClipperMain({
   onOpenSettings,
 }: {
@@ -61,7 +67,9 @@ export default function ClipperMain({
   const [overwriting, setOverwriting] = useState(false);
   const [overwriteError, setOverwriteError] = useState<string | null>(null);
   const [updatedDuplicateUrl, setUpdatedDuplicateUrl] = useState<string | null>(null);
-  const [smartOverwrite, setSmartOverwrite] = useState<DuplicateNotionPage | null>(null);
+  const [smartOverwrite, setSmartOverwrite] = useState<SmartOverwrite | null>(null);
+  const [preflightingAnalysis, setPreflightingAnalysis] = useState(false);
+  const analysisInFlight = useRef(false);
   const activeProvider = resolveByokProvider(provider);
   const providerKey = {
     openai: openAiKey,
@@ -190,8 +198,13 @@ export default function ClipperMain({
     if (!pendingDuplicate) return;
     if (pendingDuplicate.source === "smart") {
       const duplicate = pendingDuplicate.duplicate;
+      const clip = pendingDuplicate.clip;
       dismissDuplicate();
-      setSmartOverwrite(duplicate);
+      setSmartOverwrite({
+        pageId: duplicate.pageId,
+        originalUrl: clip.url,
+        dataSourceId: clip.dataSourceId,
+      });
       await analyzePage(true);
       return;
     }
@@ -213,7 +226,9 @@ export default function ClipperMain({
   }
 
   async function analyzePage(skipDuplicateCheck = false) {
-    if (!pageUrl) return;
+    if (!pageUrl || analysisInFlight.current) return;
+    analysisInFlight.current = true;
+    setPreflightingAnalysis(true);
     try {
       if (!skipDuplicateCheck) {
         const clip = quickClipInput();
@@ -256,6 +271,9 @@ export default function ClipperMain({
         type: "analysisFailed",
         message: reason instanceof Error ? reason.message : "Could not analyze this page.",
       });
+    } finally {
+      analysisInFlight.current = false;
+      setPreflightingAnalysis(false);
     }
   }
 
@@ -263,7 +281,24 @@ export default function ClipperMain({
     dispatchFlow({ type: "approvalStarted" });
     try {
       if (smartOverwrite) {
-        const result = await overwriteNotionClip(smartOverwrite.pageId, enrichedClipInput());
+        const clip = enrichedClipInput();
+        const currentDuplicate = await findNotionClipDuplicate(clip);
+        const stillMatchesApprovedDuplicate =
+          clip.dataSourceId === smartOverwrite.dataSourceId &&
+          clip.url === smartOverwrite.originalUrl &&
+          currentDuplicate?.pageId === smartOverwrite.pageId;
+        if (!stillMatchesApprovedDuplicate) {
+          setSmartOverwrite(null);
+          const result = await saveClip(clip, "review");
+          if (!result) {
+            dispatchFlow({ type: "approvalDuplicate" });
+            return;
+          }
+          dispatchFlow({ type: "approvalSaved", pageUrl: result.pageUrl });
+          return;
+        }
+
+        const result = await overwriteNotionClip(smartOverwrite.pageId, clip);
         setSmartOverwrite(null);
         dispatchFlow({ type: "approvalSaved", pageUrl: result.pageUrl });
         return;
@@ -285,6 +320,8 @@ export default function ClipperMain({
   function updateReviewField(id: string, value: DraftValue) {
     dispatchFlow({ type: "reviewFieldChanged", id, value });
   }
+
+  const isAnalysisBusy = preflightingAnalysis || (flow.screen === "clip" && flow.analyzing);
 
   const duplicateDialog = pendingDuplicate && (
     <DuplicateDialog
@@ -398,7 +435,7 @@ export default function ClipperMain({
         <div className="nc-clip-actions">
           <SubmitAction
             className="nc-save__btn--quick"
-            disabled={!db || !pageUrl || !title.trim() || flow.analyzing}
+            disabled={!db || !pageUrl || !title.trim() || isAnalysisBusy}
             label="Quick Clip"
             savedLabel="Clipped"
             onSave={saveQuickClip}
@@ -408,11 +445,11 @@ export default function ClipperMain({
           <button
             type="button"
             className="nc-save__btn nc-save__btn--smart"
-            disabled={!db || !pageUrl || !title.trim() || flow.analyzing}
+            disabled={!db || !pageUrl || !title.trim() || isAnalysisBusy}
             onClick={() => void analyzePage()}
             title="Prepare database fields with AI before saving"
           >
-            {flow.analyzing ? "Preparing..." : "Smart Clip"}
+            {isAnalysisBusy ? "Preparing..." : "Smart Clip"}
           </button>
           </div>
         </div>

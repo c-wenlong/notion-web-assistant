@@ -27,13 +27,10 @@ export function resolveDestinationSchema(
     throw new Error("The selected database has no title column for the page name.");
   }
 
-  const namedUrl = properties.URL;
-  if (namedUrl && namedUrl.type !== "url") {
+  const urlEntry = entries.find(([, property]) => property.type === "url");
+  if (!urlEntry && properties.URL) {
     throw new Error("This database already has a URL column, but it is not a URL-type property.");
   }
-  const urlEntry = namedUrl?.type === "url"
-    ? (["URL", namedUrl] as const)
-    : entries.find(([, property]) => property.type === "url");
 
   return {
     titleKey: propertyKey(titleEntry[0], titleEntry[1]),

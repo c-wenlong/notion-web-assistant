@@ -4,23 +4,14 @@ All notable changes to Notion Web Clipper are documented in this file.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## [1.0.0] - 2026-07-11
 
 ### Added
 
 - Smart Clip adapters for Anthropic and Google Gemini.
 - OpenRouter Smart Clip support through its `openrouter/free` router, with a visible Free label and API-key requirement.
 - URL-based duplicate detection with a cancel-or-overwrite confirmation before a Notion write.
-
-### Changed
-
-- Removed the non-functional Chrome Nano provider option and migrated any saved Nano choice to OpenAI.
-
-## [0.1.0] - 2026-07-11
-
-### Added
-
-- First beta release of the Notion Web Clipper Chrome extension.
+- First public release of the Notion Web Clipper Chrome extension.
 - Onboarding and popup settings for the Notion integration, AI provider, and appearance.
 - Database discovery from the connected Notion integration.
 - `Quick Clip` for title-and-URL captures.
@@ -30,7 +21,14 @@ The project follows [Semantic Versioning](https://semver.org/).
 - Chrome extension mascot and manifest icons.
 - CI verification and a downloadable Chrome MV3 build artifact.
 
-### Notes
+### Changed
 
-- OAuth and automatic Chrome Web Store deployment are not part of this beta.
-- Smart Clip supports the configured cloud provider for page analysis.
+- Removed the non-functional Chrome Nano provider option and migrated any saved Nano choice to OpenAI.
+- Removed persistent all-sites content-script injection and unused host permissions.
+- Bound Smart Clip input, revalidated duplicate overwrites, and made the URL-column write occur only after a user approves a save.
+- Updated WXT to 0.20.27 and pinned patched development dependencies.
+
+### Security
+
+- Restricted local credential storage to trusted extension contexts.
+- Added a full dependency audit and immutable GitHub Action pins to CI.

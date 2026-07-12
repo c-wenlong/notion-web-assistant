@@ -13,8 +13,8 @@
 <p align="center">
   <a href="https://github.com/c-wenlong/notion-web-assistant/actions/workflows/ci.yml"><img src="https://github.com/c-wenlong/notion-web-assistant/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
   <a href="https://github.com/c-wenlong/notion-web-assistant/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-2f6feb.svg" alt="MIT license"></a>
-  <img src="https://img.shields.io/badge/version-0.1.0-2f6feb.svg" alt="Version 0.1.0">
-  <img src="https://img.shields.io/badge/status-beta-f0a000.svg" alt="Beta status">
+  <img src="https://img.shields.io/badge/version-1.0.0-2f6feb.svg" alt="Version 1.0.0">
+  <img src="https://img.shields.io/badge/status-v1.0-16803c.svg" alt="Version 1.0">
 </p>
 
 **Notion Web Clipper** is a Manifest V3 Chrome extension for capturing the current page in a Notion database. It can either save the essentials immediately or prepare additional database fields with AI before you approve the result.
@@ -79,11 +79,11 @@ Smart Clip runs through the provider selected in Settings: OpenAI, Anthropic, Go
 
 ## Privacy and Security
 
-- The Notion integration secret and AI keys are stored in `chrome.storage.local`; they are not sent to a Notion Web Clipper server because this beta has no backend.
+- The Notion integration secret and AI keys are stored in `chrome.storage.local` and restricted to trusted extension contexts. They are not sent to a Notion Web Clipper server because v1 has no backend.
 - The extension talks directly to Notion and, when Smart Clip is used, the configured AI provider.
-- Smart Clip sends the full extracted page text to the selected AI provider after the user explicitly starts Smart Clip.
+- Smart Clip sends up to 60,000 characters of extracted page text, plus the selected field names and options, to the selected AI provider after the user explicitly starts Smart Clip.
 - Do not commit real secrets. Local `.env` files, signing keys, and build output are ignored by Git.
-- OAuth is planned for a future Chrome Web Store release and is not available in this beta.
+- OAuth is planned for a future release and is not available in v1.
 
 See [SECURITY.md](SECURITY.md) for reporting guidance.
 
@@ -103,17 +103,17 @@ pnpm dev
 pnpm --dir tools/ui-preview --ignore-workspace build
 ```
 
-The codebase uses WXT, React 18, TypeScript, and pnpm. The popup and options page live in `src/entrypoints`; Notion and AI integrations live in `src/core`; persistent state uses `wxt/storage` in `src/storage`.
+The codebase uses WXT, React 18, TypeScript, and pnpm. The popup lives in `src/entrypoints`; Notion and AI integrations live in `src/core`; persistent state uses `wxt/utils/storage` in `src/storage`.
 
 ## CI and Delivery
 
-The [CI workflow](.github/workflows/ci.yml) runs on every push, pull request, and manual dispatch. It installs both frozen lockfiles, runs `pnpm verify`, and uploads `.output/chrome-mv3` as a 14-day GitHub Actions artifact.
+The [CI workflow](.github/workflows/ci.yml) runs on every push, pull request, and manual dispatch. It installs both frozen lockfiles, runs the full dependency audit and `pnpm verify`, then uploads `.output/chrome-mv3` as a 14-day GitHub Actions artifact.
 
-There is no automatic Chrome Web Store deployment yet. For beta testing, build locally or download the CI artifact, extract it, and load the resulting `chrome-mv3` directory as an unpacked extension. A future release pipeline can add signed ZIP generation and Chrome Web Store publishing once OAuth and store readiness are in place.
+There is no automatic Chrome Web Store deployment yet. For unpacked testing, build locally or use the CI artifact and load the resulting `chrome-mv3` directory as an unpacked extension. A future release pipeline can add signed ZIP generation and Chrome Web Store publishing once OAuth and store readiness are in place.
 
 ## Versioning and Releases
 
-This repository follows semantic versioning. The current beta is **0.1.0**. Release notes live in [CHANGELOG.md](CHANGELOG.md). The package version is also used by the generated Chrome extension manifest.
+This repository follows semantic versioning. The current release is **1.0.0**. Release notes live in [CHANGELOG.md](CHANGELOG.md). The package version is also used by the generated Chrome extension manifest.
 
 ## Contributing
 

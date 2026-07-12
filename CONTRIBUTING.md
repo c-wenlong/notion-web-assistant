@@ -27,7 +27,7 @@ pnpm verify
 
 - Keep Notion and AI credentials out of source control.
 - Preserve the title-and-URL baseline for all clipping paths.
-- Do not send page content to an AI provider without respecting the Privacy setting.
+- Send page content to an AI provider only after the user explicitly starts Smart Clip.
 - Keep user-facing wording clear about what has and has not been saved to Notion.
 - Do not hand-edit generated output under `.output/`, `.wxt/`, or `dist/`.
 

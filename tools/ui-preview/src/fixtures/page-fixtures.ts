@@ -1,5 +1,4 @@
-// Fake-page fixtures for the preview. Each one simulates what `content.ts`
-// would surface to the popup on a real page in a future milestone:
+// Fake-page fixtures for the preview. Each one simulates active-tab data:
 //   - `url` is the active tab URL
 //   - `selection` is the user's highlighted text (or empty if none)
 //

@@ -179,38 +179,6 @@ body {
   gap: 12px;
 }
 
-/* Tab nav at the top of the left side panel — switches between the
-   popup view and the options view inside the preview. */
-.preview__tabs {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--preview-border-strong);
-  border-radius: var(--preview-radius);
-  background: var(--preview-bg);
-}
-.preview__tab {
-  flex: 1;
-  padding: 6px 10px;
-  border: none;
-  background: transparent;
-  color: var(--preview-fg-muted);
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: 4px;
-  cursor: pointer;
-  transition:
-    background-color 120ms ease,
-    color 120ms ease;
-}
-.preview__tab:hover:not([aria-selected="true"]) {
-  color: var(--preview-fg);
-}
-.preview__tab[aria-selected="true"] {
-  background: var(--preview-accent);
-  color: white;
-}
-
 .preview__toggle-inline {
   display: flex;
   align-items: center;
@@ -222,14 +190,6 @@ body {
 .preview__toggle-inline input {
   accent-color: var(--preview-accent);
   cursor: pointer;
-}
-
-/* Options view — wider chrome wrapper simulates a full browser tab. */
-.preview__chrome-wrap--wide {
-  width: 720px;
-}
-.preview__options {
-  background: var(--bg-page, #ffffff);
 }
 
 .preview__banner {

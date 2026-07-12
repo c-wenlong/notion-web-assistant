@@ -1,7 +1,7 @@
-// In-memory shim of `wxt/storage` for the UI preview. Vite's `resolve.alias`
-// rewrites the popup's `import { storage } from "wxt/storage"` to this file
+// In-memory shim of `wxt/utils/storage` for the UI preview. Vite's `resolve.alias`
+// rewrites the popup's storage import to this file
 // at *runtime*. tsc doesn't honor the Vite alias, so the import type ships
-// from the real `wxt/storage` package. To make items fabricated here
+// from the real `wxt/utils/storage` package. To make items fabricated here
 // compatible with the popup's `useStorageItem<T>()` at compile time without
 // hand-rolling an interface that mirrors every future WxtStorageItem field,
 // we cast the runtime impl to `ReturnType<typeof wxtStorage.defineItem<T>>`
@@ -12,7 +12,7 @@
 // that calls key / defaultValue / getMeta / setMeta / migrate would throw
 // at runtime. Add the methods here when such callers land.
 
-import type { storage as wxtStorage } from "wxt/storage";
+import type { storage as wxtStorage } from "wxt/utils/storage";
 
 /** Per-key in-memory value store. */
 const store = new Map<string, unknown>();
@@ -68,7 +68,7 @@ export const storage = {
   },
 };
 
-/** Test/debug helpers — not part of the real `wxt/storage` API. */
+/** Test/debug helpers - not part of the real WXT storage API. */
 export const __debug = {
   peek(key: string): unknown {
     return store.get(key);

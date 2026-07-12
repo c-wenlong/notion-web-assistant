@@ -1,8 +1,4 @@
-import {
-  PAGE_METADATA_MESSAGE,
-  type PageMetadata,
-  type PageMetadataRequest,
-} from "~/shared/pageMetadata";
+import type { PageMetadata } from "~/shared/pageMetadata";
 
 interface ExtensionTab {
   id?: number;
@@ -10,11 +6,35 @@ interface ExtensionTab {
 
 interface ExtensionTabsApi {
   query(queryInfo: { active: boolean; currentWindow: boolean }): Promise<ExtensionTab[]>;
-  sendMessage(tabId: number, message: PageMetadataRequest): Promise<unknown>;
+}
+
+interface ExtensionScriptingApi {
+  executeScript(injection: {
+    target: { tabId: number };
+    func: () => PageMetadata;
+  }): Promise<Array<{ result?: unknown }>>;
 }
 
 interface ExtensionApi {
   tabs?: ExtensionTabsApi;
+  scripting?: ExtensionScriptingApi;
+}
+
+function readPageMetadata(): PageMetadata {
+  const maxTextLength = 60_000;
+  const metaContent = (selector: string): string | null => {
+    const content = document.querySelector<HTMLMetaElement>(selector)?.content.trim();
+    return content || null;
+  };
+  const metadataTitle =
+    metaContent('meta[property="og:title"]') ?? metaContent('meta[name="twitter:title"]');
+  const title = metadataTitle || document.title.trim() || "Untitled page";
+
+  return {
+    title,
+    url: window.location.href,
+    text: (document.body?.innerText ?? "").replace(/\s+/g, " ").trim().slice(0, maxTextLength),
+  };
 }
 
 function pageMetadataFromResponse(value: unknown): PageMetadata | null {
@@ -33,7 +53,7 @@ function pageMetadataFromResponse(value: unknown): PageMetadata | null {
 /** Read title and URL from the content script attached to the active browser tab. */
 export async function getActivePageMetadata(): Promise<PageMetadata> {
   const extension = (globalThis as typeof globalThis & { chrome?: ExtensionApi }).chrome;
-  if (!extension?.tabs) {
+  if (!extension?.tabs || !extension.scripting) {
     throw new Error("Page details are only available inside the browser extension.");
   }
 
@@ -41,10 +61,11 @@ export async function getActivePageMetadata(): Promise<PageMetadata> {
   if (!tab?.id) throw new Error("Could not identify the active browser tab.");
 
   try {
-    const response = await extension.tabs.sendMessage(tab.id, {
-      type: PAGE_METADATA_MESSAGE,
+    const [injection] = await extension.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: readPageMetadata,
     });
-    const metadata = pageMetadataFromResponse(response);
+    const metadata = pageMetadataFromResponse(injection?.result);
     if (!metadata) throw new Error("The active page did not return usable details.");
     return metadata;
   } catch {

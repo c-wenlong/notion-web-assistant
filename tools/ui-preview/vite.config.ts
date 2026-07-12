@@ -1,12 +1,12 @@
 // Vite config for the UI preview app. Imports the popup's React components
-// directly from the parent's `src/` and aliases `wxt/storage` to a local
+// directly from the parent's `src/` and aliases `wxt/utils/storage` to a local
 // shim so `useStorageItem` plus the popup's `~/storage/items` work without a
 // real Chrome runtime.
 //
 // Why aliases matter:
-// - `~`  → the parent's `src/`, so the popup's own `~/core/recipes/registry`
-//   and `~/storage/items` resolve exactly as they do in the WXT build.
-// - `wxt/storage` → our local shim that mimics the API surface (defineItem +
+// - `~`  → the parent's `src/`, so popup imports resolve exactly as they do in
+//   the WXT build.
+// - `wxt/utils/storage` → our local shim that mimics the API surface (defineItem +
 //   getValue/setValue/removeValue/watch/fallback) backed by an in-memory Map.
 
 import { fileURLToPath } from "node:url";
@@ -29,7 +29,7 @@ export default defineConfig({
     alias: {
       "~": parentSrc,
       "~/": `${parentSrc}/`,
-      "wxt/storage": path.resolve(__dirname, "src", "shims", "wxt-storage.ts"),
+      "wxt/utils/storage": path.resolve(__dirname, "src", "shims", "wxt-storage.ts"),
     },
   },
 });

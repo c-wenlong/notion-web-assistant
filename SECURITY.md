@@ -2,7 +2,7 @@
 
 ## Supported version
 
-Security fixes are applied to the latest `main` branch during the beta period.
+Security fixes are applied to the latest `main` branch.
 
 ## Reporting a vulnerability
 

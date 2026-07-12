@@ -5,7 +5,7 @@
 //   - Page URL + selection fixtures (preview-only storage)
 //
 // The token placeholder is intentionally ASCII-only; useStorageItem accepts
-// the prefix validation in AuthGate and doesn't care about the value being
+// the popup's prefix validation and doesn't care about the value being
 // a real Notion integration secret.
 
 import { useEffect, useState } from "react";
@@ -93,7 +93,7 @@ export function PageControls() {
           </button>
         </div>
         <span className="preview__status">
-          {token ? "Connected \u2713" : "No token \u2192 AuthGate"}
+          {token ? "Connected \u2713" : "No token \u2192 onboarding"}
         </span>
       </div>
 
@@ -157,12 +157,12 @@ export function PageControls() {
 
       {showAdvanced && (
         <pre className="preview__notes">
-{`// \u00b7 wxt/storage is aliased to tools/ui-preview/src/shims/wxt-storage.ts
+{`// \u00b7 wxt/utils/storage is aliased to tools/ui-preview/src/shims/wxt-storage.ts
 //   per Vite's resolve.alias. Refresh the page to reset in-memory state.
 // \u00b7 notionTokenStorage / lastUsedDbStorage writes reach the popup's own useStorageItem;
-//   AuthGate vs ClipperMain routing is genuine.
+//   PopupSettings vs ClipperMain routing is genuine.
 // \u00b7 pageUrlFixtureStorage / selectionFixtureStorage are PREVIEW-ONLY. They will
-//   be replaced by a runtime bridge to content.ts in a future milestone.
+//   mirror the extension's active-tab metadata flow.
 // \u00b7 \u2318R / Ctrl-R: re-seed the default fixture (arXiv abstract).`}
         </pre>
       )}

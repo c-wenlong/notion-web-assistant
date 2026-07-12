@@ -1,12 +1,12 @@
-// Custom reactive bindings around `wxt/storage` items for React components.
+// Custom reactive bindings around `wxt/utils/storage` items for React components.
 //
-// `wxt/storage/react` doesn't yet export a `useStorageItem` hook in WXT 0.19, so
+// WXT's storage module does not export a React hook, so
 // we derive the type from `storage.defineItem<T>` itself. This way the hook
 // stays in lock-step with whatever signature WXT ships (e.g. `removeValue`
 // taking an options object rather than a string).
 
 import { useCallback, useEffect, useState } from "react";
-import type { storage as storageNs } from "wxt/storage";
+import type { storage as storageNs } from "wxt/utils/storage";
 
 /**
  * Whatever `storage.defineItem<T>(...)` returns, narrowed by T.
@@ -36,7 +36,7 @@ export interface UseStorageItemReturn<T> {
 }
 
 /**
- * Subscribe a React component to a `wxt/storage` item.
+ * Subscribe a React component to a `wxt/utils/storage` item.
  * - Initial render uses `item.fallback` so the popup paints instantly.
  * - On mount, an async `getValue()` overwrites with the persisted value.
  * - On any `item.watch()` event (cross-context changes), the component re-renders.
@@ -84,7 +84,7 @@ export function useStorageItem<T>(
           : next;
       // Per spec §3.2: caller-intended "blank" maps to *removal* (falls back
       // to defaultValue / null on the next read), not to storing null. Real
-      // wxt/storage behaves the same: setValue(null) would persist `null` as
+      // WXT storage behaves the same: setValue(null) would persist `null` as
       // a value rather than clearing the key.
       if (resolved === null || resolved === undefined) {
         await item.removeValue();

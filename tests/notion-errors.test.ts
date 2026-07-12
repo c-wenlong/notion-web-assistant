@@ -4,7 +4,14 @@ import { analyzeWithProvider, approvedNotionProperties, normalizeAiFields, parse
 import { validateAiProvider } from "../src/core/ai/connection";
 import { clipperFlowReducer, initialClipperFlow } from "../src/core/clipper/flow";
 import { formatNotionError } from "../src/core/notion/errors";
+import {
+  createNotionClipWithClient,
+  findNotionClipDuplicateWithClient,
+  overwriteNotionClipWithClient,
+  type NotionApiClient,
+} from "../src/core/notion/pageClient";
 import { resolveDestinationSchema } from "../src/core/notion/schema";
+import { restrictLocalStorageToTrustedContexts } from "../src/core/security/storageAccess";
 
 test("keeps Notion validation details instead of replacing them with a guessed schema error", () => {
   const message = formatNotionError(400, {
@@ -59,8 +66,29 @@ test("keeps only schema-compatible AI values and builds valid Notion properties"
 
   assert.deepEqual(approvedNotionProperties(fields), {
     summary: { rich_text: [{ type: "text", text: { content: "A concise summary." } }] },
+    status: { select: null },
     tags: { multi_select: [{ name: "AI" }] },
     published: { date: { start: "2026-07-11" } },
+  });
+});
+
+test("writes explicit empty values when a reviewed Smart Clip field is cleared", () => {
+  const properties = approvedNotionProperties([
+    { id: "text", name: "Text", type: "rich_text", options: [], value: null },
+    { id: "number", name: "Number", type: "number", options: [], value: null },
+    { id: "checked", name: "Checked", type: "checkbox", options: [], value: null },
+    { id: "select", name: "Select", type: "select", options: ["Paper"], value: null },
+    { id: "tags", name: "Tags", type: "multi_select", options: ["AI"], value: [] },
+    { id: "date", name: "Date", type: "date", options: [], value: null },
+  ]);
+
+  assert.deepEqual(properties, {
+    text: { rich_text: [] },
+    number: { number: null },
+    checked: { checkbox: false },
+    select: { select: null },
+    tags: { multi_select: [] },
+    date: { date: null },
   });
 });
 
@@ -171,6 +199,165 @@ test("checks an OpenAI key against its read-only models endpoint", async () => {
 
   assert.equal(requestedUrl, "https://api.openai.com/v1/models");
   assert.equal(authorization, "Bearer sk-test");
+});
+
+test("keeps Gemini API keys out of validation URLs", async () => {
+  let requestedUrl = "";
+  let apiKey = "";
+
+  await validateAiProvider("gemini", "AIza-test", async (url, init) => {
+    requestedUrl = url;
+    apiKey = new Headers(init.headers).get("x-goog-api-key") ?? "";
+    return new Response("{}", { status: 200 });
+  });
+
+  assert.equal(requestedUrl, "https://generativelanguage.googleapis.com/v1beta/models");
+  assert.equal(apiKey, "AIza-test");
+});
+
+test("bounds Smart Clip data sent to AI providers", async () => {
+  let prompt = "";
+  const fields = Array.from({ length: 51 }, (_, index) => ({
+    id: `field-${index}`,
+    name: "Field".repeat(50),
+    type: "rich_text" as const,
+    options: Array.from({ length: 51 }, () => "Option".repeat(30)),
+  }));
+
+  const result = await analyzeWithProvider({
+    provider: "openai",
+    apiKey: "sk-test",
+    page: {
+      title: "Page",
+      url: "https://example.com/page",
+      text: "x".repeat(60_100),
+    },
+    fields,
+    fetcher: async (_url, init) => {
+      const body = JSON.parse(String(init.body)) as { input: string };
+      prompt = body.input;
+      return new Response(JSON.stringify({ output_text: "{\"fields\":[]}" }), { status: 200 });
+    },
+  });
+  const parsedPrompt = JSON.parse(prompt) as {
+    page: { text: string };
+    fields: Array<{ name: string; options: string[] }>;
+  };
+
+  assert.equal(parsedPrompt.page.text.length, 60_000);
+  assert.equal(parsedPrompt.fields.length, 50);
+  assert.equal(parsedPrompt.fields[0]?.name.length, 160);
+  assert.equal(parsedPrompt.fields[0]?.options.length, 50);
+  assert.equal(parsedPrompt.fields[0]?.options[0]?.length, 120);
+  assert.equal(result.length, 50);
+});
+
+test("does not include provider error bodies in user-facing failures", async () => {
+  await assert.rejects(
+    analyzeWithProvider({
+      provider: "openai",
+      apiKey: "sk-test",
+      page: { title: "Page", url: "https://example.com", text: "Text" },
+      fields: [],
+      fetcher: async () => new Response("provider echoed sensitive page content", { status: 500 }),
+    }),
+    (error: Error) => !error.message.includes("sensitive page content"),
+  );
+});
+
+test("prefers an existing URL property even when another property is named URL", () => {
+  const schema = resolveDestinationSchema({
+    Name: { id: "title", type: "title" },
+    URL: { id: "url-text", type: "rich_text" },
+    Source: { id: "url", type: "url" },
+  });
+
+  assert.deepEqual(schema, { titleKey: "title", urlKey: "url", needsUrlColumn: false });
+});
+
+function jsonResponse(body: unknown): Response {
+  return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+}
+
+function queuedNotionClient(responses: Response[], calls: Array<{ url: string; init: RequestInit }>): NotionApiClient {
+  return {
+    token: "secret_test",
+    version: "2025-09-03",
+    fetcher: async (url, init) => {
+      calls.push({ url, init });
+      const response = responses.shift();
+      if (!response) throw new Error(`Unexpected request: ${url}`);
+      return response;
+    },
+  };
+}
+
+test("duplicate preflight does not add a URL property before user approval", async () => {
+  const calls: Array<{ url: string; init: RequestInit }> = [];
+  const result = await findNotionClipDuplicateWithClient(
+    { dataSourceId: "source-id", url: "https://example.com/paper" },
+    queuedNotionClient([jsonResponse({ properties: { Name: { id: "title", type: "title" } } })], calls),
+  );
+
+  assert.equal(result, null);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]?.init.method, undefined);
+});
+
+test("approved create adds the missing URL property and saves title plus URL", async () => {
+  const calls: Array<{ url: string; init: RequestInit }> = [];
+  const result = await createNotionClipWithClient(
+    { dataSourceId: "source-id", title: "Paper", url: "https://example.com/paper" },
+    queuedNotionClient([
+      jsonResponse({ properties: { Name: { id: "title", type: "title" } } }),
+      jsonResponse({}),
+      jsonResponse({ results: [] }),
+      jsonResponse({ url: "https://www.notion.so/new-page" }),
+    ], calls),
+  );
+
+  assert.deepEqual(result, { kind: "created", pageUrl: "https://www.notion.so/new-page" });
+  assert.equal(calls[1]?.init.method, "PATCH");
+  assert.deepEqual(JSON.parse(String(calls[1]?.init.body)), {
+    properties: { URL: { type: "url", url: {} } },
+  });
+  assert.equal(calls[2]?.url.endsWith("/query"), true);
+  assert.deepEqual(JSON.parse(String(calls[3]?.init.body)), {
+    parent: { type: "data_source_id", data_source_id: "source-id" },
+    properties: {
+      title: { title: [{ type: "text", text: { content: "Paper" } }] },
+      URL: { url: "https://example.com/paper" },
+    },
+  });
+});
+
+test("stale duplicate approval never patches a different Notion page", async () => {
+  const calls: Array<{ url: string; init: RequestInit }> = [];
+  await assert.rejects(
+    overwriteNotionClipWithClient(
+      "approved-page",
+      { dataSourceId: "source-id", title: "Paper", url: "https://example.com/paper" },
+      queuedNotionClient([
+        jsonResponse({ properties: { Name: { id: "title", type: "title" }, URL: { id: "url", type: "url" } } }),
+        jsonResponse({ results: [{ id: "different-page", url: "https://www.notion.so/different" }] }),
+      ], calls),
+    ),
+    /matching Notion row changed/,
+  );
+
+  assert.equal(calls.length, 2);
+  assert.equal(calls.some((call) => call.url.endsWith("/pages/approved-page")), false);
+});
+
+test("sets Chrome local storage to trusted contexts", async () => {
+  let accessLevel: string | undefined;
+  await restrictLocalStorageToTrustedContexts({
+    setAccessLevel: async (details) => {
+      accessLevel = details.accessLevel;
+    },
+  });
+
+  assert.equal(accessLevel, "TRUSTED_CONTEXTS");
 });
 
 test("does not save a provider key when its connection check is rejected", async () => {

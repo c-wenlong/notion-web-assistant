@@ -31,8 +31,8 @@ function connectionRequest(provider: ByokProvider, apiKey: string): ConnectionRe
       };
     case "gemini":
       return {
-        url: `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`,
-        init: {},
+        url: "https://generativelanguage.googleapis.com/v1beta/models",
+        init: { headers: { "x-goog-api-key": apiKey } },
       };
   }
 }
