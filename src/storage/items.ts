@@ -24,6 +24,10 @@ export const onboardingCompletedStorage = storage.defineItem<boolean>(
 export type Theme = "light" | "dark" | "system";
 
 export const themeStorage = storage.defineItem<Theme>("sync:theme", { fallback: "system" });
+export const defuddleEnabledStorage = storage.defineItem<boolean>(
+  "sync:contentExtraction.defuddleEnabled",
+  { fallback: true },
+);
 export const lastUsedDbStorage = storage.defineItem<string | null>(
   "sync:lastUsedDb",
   { fallback: null },

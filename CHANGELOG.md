@@ -4,6 +4,12 @@ All notable changes to Notion Web Clipper are documented in this file.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- Default-on local Defuddle extraction with a Settings toggle for restoring the original page-text method.
+
 ## [1.0.0] - 2026-07-11
 
 ### Added

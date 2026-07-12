@@ -23,6 +23,7 @@ import {
   byokOpenaiKeyStorage,
   byokOpenRouterKeyStorage,
   byokProviderStorage,
+  defuddleEnabledStorage,
   lastUsedDbStorage,
   resolveByokProvider,
 } from "~/storage/items";
@@ -53,6 +54,7 @@ export default function ClipperMain({
   const { value: anthropicKey } = useStorageItem(byokAnthropicKeyStorage);
   const { value: openRouterKey } = useStorageItem(byokOpenRouterKeyStorage);
   const { value: geminiKey } = useStorageItem(byokGeminiKeyStorage);
+  const { value: defuddleEnabled } = useStorageItem(defuddleEnabledStorage);
   const [dataSources, setDataSources] = useState<ReadonlyArray<{ id: string; name: string }>>([]);
   const [db, setDb] = useState("");
   const [title, setTitle] = useState("");
@@ -121,7 +123,7 @@ export default function ClipperMain({
 
   useEffect(() => {
     let cancelled = false;
-    void getActivePageMetadata()
+    void getActivePageMetadata(defuddleEnabled ?? true)
       .then((metadata) => {
         if (cancelled) return;
         setPageUrl(metadata.url);
@@ -138,7 +140,7 @@ export default function ClipperMain({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [defuddleEnabled]);
 
   function reloadDataSources() {
     setDataSourceReload((count) => count + 1);

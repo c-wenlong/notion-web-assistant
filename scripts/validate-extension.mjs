@@ -4,6 +4,7 @@ import path from "node:path";
 const outputDir = path.resolve(".output/chrome-mv3");
 const manifestPath = path.join(outputDir, "manifest.json");
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+const requiredBundleFiles = ["page-extractor.js"];
 
 const iconPaths = new Set([
   ...Object.values(manifest.icons ?? {}),
@@ -23,4 +24,10 @@ if (missing.length > 0) {
   throw new Error(`Generated manifest references missing icons: ${missing.join(", ")}`);
 }
 
-console.log(`Validated ${iconPaths.size} manifest icons in ${outputDir}`);
+for (const bundleFile of requiredBundleFiles) {
+  await access(path.join(outputDir, bundleFile));
+}
+
+console.log(
+  `Validated ${iconPaths.size} manifest icons and ${requiredBundleFiles.length} runtime script in ${outputDir}`,
+);

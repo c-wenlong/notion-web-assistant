@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { parseHTML } from "linkedom";
 import { analyzeWithProvider, approvedNotionProperties, normalizeAiFields, parseOpenAiAnalysis } from "../src/core/ai/analyze";
 import { validateAiProvider } from "../src/core/ai/connection";
 import { clipperFlowReducer, initialClipperFlow } from "../src/core/clipper/flow";
 import { formatNotionError } from "../src/core/notion/errors";
+import { getActivePageMetadata } from "../src/core/page/activeTab";
+import { extractPageText, originalPageText } from "../src/core/page/extraction";
 import {
   createNotionClipWithClient,
   findNotionClipDuplicateWithClient,
@@ -12,6 +15,51 @@ import {
 } from "../src/core/notion/pageClient";
 import { resolveDestinationSchema } from "../src/core/notion/schema";
 import { restrictLocalStorageToTrustedContexts } from "../src/core/security/storageAccess";
+
+test("Defuddle removes page chrome while preserving the main article", () => {
+  const paragraph =
+    "This research paper describes a careful evaluation of retrieval systems, including the experimental method, measured outcomes, limitations, and conclusions for future work. ";
+  const { document } = parseHTML(`<!doctype html><html><head><title>Research paper</title></head><body>
+    <nav>Navigation Account Pricing Products</nav>
+    <main><article><h1>Reliable retrieval systems</h1><p>${paragraph.repeat(5)}</p><p>${paragraph.repeat(5)}</p></article></main>
+    <footer>Terms Privacy Careers Newsletter</footer>
+  </body></html>`);
+
+  const original = originalPageText(document);
+  const extracted = extractPageText(document, "https://example.com/research");
+
+  assert.match(original, /Navigation Account Pricing/);
+  assert.match(extracted, /Reliable retrieval systems/);
+  assert.doesNotMatch(extracted, /Navigation Account Pricing/);
+  assert.doesNotMatch(extracted, /Terms Privacy Careers/);
+});
+
+test("the extraction setting selects Defuddle or the original page reader", async () => {
+  const injections: unknown[] = [];
+  const previousChrome = (globalThis as { chrome?: unknown }).chrome;
+  (globalThis as { chrome?: unknown }).chrome = {
+    tabs: { query: async () => [{ id: 42 }] },
+    scripting: {
+      executeScript: async (injection: unknown) => {
+        injections.push(injection);
+        return [{ result: { title: "Page", url: "https://example.com", text: "Content" } }];
+      },
+    },
+  };
+
+  try {
+    await getActivePageMetadata(true);
+    await getActivePageMetadata(false);
+  } finally {
+    (globalThis as { chrome?: unknown }).chrome = previousChrome;
+  }
+
+  assert.deepEqual(injections[0], {
+    target: { tabId: 42 },
+    files: ["page-extractor.js"],
+  });
+  assert.equal(typeof (injections[1] as { func?: unknown }).func, "function");
+});
 
 test("keeps Notion validation details instead of replacing them with a guessed schema error", () => {
   const message = formatNotionError(400, {

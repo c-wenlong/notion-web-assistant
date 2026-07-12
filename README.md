@@ -26,6 +26,7 @@
 - Uses the page URL as a duplicate key and lets you cancel or overwrite a matching row before writing.
 - Creates a `URL` property when the selected database does not have one.
 - Offers two capture paths: `Quick Clip` for title and URL only, and `Smart Clip` for an AI-prepared, editable review before saving.
+- Cleans page content locally with Defuddle by default, with an option to use the original page text instead.
 - Lets you connect and verify your Notion integration and AI key from the extension popup.
 - Stores credentials locally and offers light, dark, and system appearance modes.
 
@@ -82,6 +83,7 @@ Smart Clip runs through the provider selected in Settings: OpenAI, Anthropic, Go
 - The Notion integration secret and AI keys are stored in `chrome.storage.local` and restricted to trusted extension contexts. They are not sent to a Notion Web Clipper server because v1 has no backend.
 - The extension talks directly to Notion and, when Smart Clip is used, the configured AI provider.
 - Smart Clip sends up to 60,000 characters of extracted page text, plus the selected field names and options, to the selected AI provider after the user explicitly starts Smart Clip.
+- Defuddle extraction runs locally with its network fallbacks disabled. It can be turned off under **Content extraction** in Settings.
 - Do not commit real secrets. Local `.env` files, signing keys, and build output are ignored by Git.
 - OAuth is planned for a future release and is not available in v1.
 

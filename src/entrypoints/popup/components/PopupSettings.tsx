@@ -9,6 +9,7 @@ import {
   byokOpenaiKeyStorage,
   byokOpenRouterKeyStorage,
   byokProviderStorage,
+  defuddleEnabledStorage,
   notionTokenStorage,
   onboardingCompletedStorage,
   resolveByokProvider,
@@ -16,7 +17,7 @@ import {
 } from "~/storage/items";
 
 type Mode = "onboarding" | "settings";
-type SettingSection = "notion" | "ai" | "appearance";
+type SettingSection = "notion" | "ai" | "extraction" | "appearance";
 type ConnectionState = "idle" | "checking" | "connected" | "error";
 
 const PROVIDERS: ReadonlyArray<{ value: ByokProvider; label: string; placeholder: string; keyUrl: string }> = [
@@ -92,10 +93,12 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
   const { value: anthropicKey, set: writeAnthropicKey } = useStorageItem(byokAnthropicKeyStorage);
   const { value: openRouterKey, set: writeOpenRouterKey } = useStorageItem(byokOpenRouterKeyStorage);
   const { value: geminiKey, set: writeGeminiKey } = useStorageItem(byokGeminiKeyStorage);
+  const { value: defuddleEnabled, set: writeDefuddleEnabled } = useStorageItem(defuddleEnabledStorage);
   const { value: theme, set: writeTheme } = useStorageItem(themeStorage);
   const { set: setOnboardingCompleted } = useStorageItem(onboardingCompletedStorage);
 
   const activeProvider = resolveByokProvider(provider);
+  const activeDefuddleEnabled = defuddleEnabled ?? true;
   const activeTheme = theme ?? "system";
   const activeProviderInfo = providerInfo(activeProvider);
   const savedKey = {
@@ -461,6 +464,40 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
               </p>
             )}
             {aiError && <p className="nc-settings__error" role="alert">{aiError}</p>}
+          </div>
+        )}
+      </section>
+
+      <section className={`nc-settings__item ${openSection === "extraction" ? "is-open" : ""}`}>
+        <button
+          type="button"
+          className="nc-settings__trigger"
+          aria-expanded={openSection === "extraction"}
+          aria-controls="popup-settings-extraction"
+          onClick={() => toggleSection("extraction")}
+        >
+          <span className="nc-settings__summary">
+            <span className="nc-settings__summary-title">Content extraction</span>
+            <span className="nc-settings__status">
+              {activeDefuddleEnabled ? "Clean page content" : "Use original page text"}
+            </span>
+          </span>
+          <span className="nc-settings__chevron" aria-hidden="true" />
+        </button>
+        {openSection === "extraction" && (
+          <div id="popup-settings-extraction" className="nc-settings__panel">
+            <p className="nc-settings__panel-copy">
+              Remove navigation, ads, and other page clutter before Smart Clip sends text to your AI provider.
+            </p>
+            <label className="nc-switch-row">
+              <span>Use Defuddle</span>
+              <input
+                type="checkbox"
+                checked={activeDefuddleEnabled}
+                onChange={(event) => void writeDefuddleEnabled(event.target.checked)}
+              />
+              <span className="nc-switch" aria-hidden="true" />
+            </label>
           </div>
         )}
       </section>
