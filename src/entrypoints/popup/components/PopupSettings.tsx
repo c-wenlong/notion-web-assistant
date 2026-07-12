@@ -12,12 +12,11 @@ import {
   notionTokenStorage,
   onboardingCompletedStorage,
   resolveByokProvider,
-  sendFullPageTextToAiStorage,
   themeStorage,
 } from "~/storage/items";
 
 type Mode = "onboarding" | "settings";
-type SettingSection = "notion" | "ai" | "privacy" | "appearance";
+type SettingSection = "notion" | "ai" | "appearance";
 type ConnectionState = "idle" | "checking" | "connected" | "error";
 
 const PROVIDERS: ReadonlyArray<{ value: ByokProvider; label: string; placeholder: string; keyUrl: string }> = [
@@ -93,7 +92,6 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
   const { value: anthropicKey, set: writeAnthropicKey } = useStorageItem(byokAnthropicKeyStorage);
   const { value: openRouterKey, set: writeOpenRouterKey } = useStorageItem(byokOpenRouterKeyStorage);
   const { value: geminiKey, set: writeGeminiKey } = useStorageItem(byokGeminiKeyStorage);
-  const { value: sendFullPageText, set: writeSendFullPageText } = useStorageItem(sendFullPageTextToAiStorage);
   const { value: theme, set: writeTheme } = useStorageItem(themeStorage);
   const { set: setOnboardingCompleted } = useStorageItem(onboardingCompletedStorage);
 
@@ -455,36 +453,6 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
               </p>
             )}
             {aiError && <p className="nc-settings__error" role="alert">{aiError}</p>}
-          </div>
-        )}
-      </section>
-
-      <section className={`nc-settings__item ${openSection === "privacy" ? "is-open" : ""}`}>
-        <button
-          type="button"
-          className="nc-settings__trigger"
-          aria-expanded={openSection === "privacy"}
-          aria-controls="popup-settings-privacy"
-          onClick={() => toggleSection("privacy")}
-        >
-          <span className="nc-settings__summary">
-            <span className="nc-settings__summary-title">Privacy</span>
-            <span className="nc-settings__status">{sendFullPageText ? "Full page text" : "Limited page text"}</span>
-          </span>
-          <span className="nc-settings__chevron" aria-hidden="true" />
-        </button>
-        {openSection === "privacy" && (
-          <div id="popup-settings-privacy" className="nc-settings__panel">
-            <p className="nc-settings__panel-copy">Choose how much page content an AI provider receives.</p>
-            <label className="nc-switch-row">
-              <span>Send the full page text</span>
-              <input
-                type="checkbox"
-                checked={sendFullPageText ?? false}
-                onChange={(event) => void writeSendFullPageText(event.target.checked)}
-              />
-              <span className="nc-switch" aria-hidden="true" />
-            </label>
           </div>
         )}
       </section>

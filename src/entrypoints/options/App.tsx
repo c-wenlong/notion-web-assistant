@@ -3,7 +3,6 @@
 //
 //   - AuthCard       — Notion integration token paste + workspace hint view
 //   - AIProviderCard — provider picker + per-provider BYOK key field
-//   - AdvancedCard   — privacy toggle + auth-mode notice
 //
 // No path-level routing needed for MVP: every section the spec requires is
 // in scope on first load, and concierge flows (e.g. "import config DB")
@@ -12,7 +11,6 @@
 import { useEffect } from "react";
 import AuthCard from "./components/AuthCard";
 import AIProviderCard from "./components/AIProviderCard";
-import AdvancedCard from "./components/AdvancedCard";
 import { primaryMascotUrl } from "~/shared/branding";
 import { themeStorage } from "~/storage/items";
 import { useStorageItem } from "~/storage/react";
@@ -39,7 +37,6 @@ export default function App() {
       <main className="nc-opt__main">
         <AuthCard />
         <AIProviderCard />
-        <AdvancedCard />
       </main>
 
       <footer className="nc-opt__foot">

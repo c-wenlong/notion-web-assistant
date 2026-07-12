@@ -411,7 +411,7 @@ Distinct from the retry queue (which holds unexpected failures), a **draft** is 
 
 - BYOK API keys stored in `chrome.storage.local`, never send to any server.
 - Notion token stored in `chrome.storage.local`, never send to any server.
-- Page content is sent to external services **only** when a user-initiated action requires it (extraction, enrichment). A clear toggle in options: *"Send full page text to my AI provider when extracting"* (off by default — text is summarized/truncated first).
+- Page content is sent to external services **only** when a user-initiated action requires it (extraction, enrichment). Smart Clip sends the full extracted page text because field population depends on that context.
 - No third-party analytics, no telemetry, no phone-home.
 
 ### 7.3 PII handling

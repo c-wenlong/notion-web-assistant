@@ -25,8 +25,8 @@ export const authModeStorage = storage.defineItem<"internal" | "oauth">(
 );
 
 // The popup owns the first-run setup flow. Keeping completion separate from
-// the token lets a user review the provider and privacy choices before they
-// first land in the clipper.
+// the token lets a user review provider choices before they first land in the
+// clipper.
 export const onboardingCompletedStorage = storage.defineItem<boolean>(
   "local:onboarding.completed",
   { fallback: false },
@@ -88,12 +88,6 @@ export const lastUsedDbStorage = storage.defineItem<string | null>(
 );
 export const byokEnabledStorage = storage.defineItem<boolean>(
   "sync:byokEnabled",
-  { fallback: false },
-);
-// Send the full cleaned page body to the AI provider when extracting.
-// Defaults OFF — text is summarized/truncated first (spec §7.2).
-export const sendFullPageTextToAiStorage = storage.defineItem<boolean>(
-  "sync:ai.sendFullPageText",
   { fallback: false },
 );
 

@@ -2,7 +2,6 @@
 //
 //   - BYOK provider choice
 //   - 4 per-provider BYOK key fields (OpenAI / Anthropic / OpenRouter / Gemini)
-//   - Send-full-page-text PII toggle (off by default per spec §7.2)
 //   - Auth mode (info-only in MVP Phase 4 placeholder)
 //
 // All writes go through the popup's real `useStorageItem` hook so the
@@ -21,7 +20,6 @@ import {
   byokOpenRouterKeyStorage,
   byokProviderStorage,
   notionTokenStorage,
-  sendFullPageTextToAiStorage,
   workspaceHintStorage,
 } from "~/storage/items";
 
@@ -53,9 +51,6 @@ function useAllByokKeys() {
 export function OptionsControls() {
   const { value: provider, set: writeProvider } =
     useStorageItem(byokProviderStorage);
-  const { value: sendFull, set: writeSendFull } = useStorageItem(
-    sendFullPageTextToAiStorage,
-  );
   const { value: authMode, set: writeAuthMode } = useStorageItem(authModeStorage);
   const { value: token } = useStorageItem(notionTokenStorage);
   const { value: workspace } = useStorageItem(workspaceHintStorage);
@@ -136,18 +131,6 @@ export function OptionsControls() {
       </div>
 
       <div className="preview__ctl">
-        <span className="preview__ctl-label">Send full page text to AI</span>
-        <label className="preview__toggle-inline">
-          <input
-            type="checkbox"
-            checked={sendFull ?? false}
-            onChange={(e) => void writeSendFull(e.target.checked)}
-          />
-          <span>{sendFull ? "On" : "Off (default)"}</span>
-        </label>
-      </div>
-
-      <div className="preview__ctl">
         <span className="preview__ctl-label">Auth mode (read mostly)</span>
         <select
           className="preview__select"
@@ -185,9 +168,7 @@ export function OptionsControls() {
 //   views \u2014 toggling \u201cSign in (fake)\u201d on PageControls while on the
 //   Options tab lights up the saved-token status here.
 // \u00b7 BYOK keys: four separate items, no JSON blob. Lets a per-provider
-//   wipe without touching the others (per spec §3.4 privacy posture).
-// \u00b7 sendFullPageTextToAiStorage lives in sync: so it follows the user
-//   across devices \u2014 but the BYOK keys themselves do NOT (local: only).`}
+//   wipe without touching the others. BYOK keys remain local to the device.`}
         </pre>
       )}
     </div>

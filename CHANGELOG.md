@@ -21,7 +21,7 @@ The project follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 - First beta release of the Notion Web Clipper Chrome extension.
-- Onboarding and popup settings for the Notion integration, AI provider, privacy, and appearance.
+- Onboarding and popup settings for the Notion integration, AI provider, and appearance.
 - Database discovery from the connected Notion integration.
 - `Quick Clip` for title-and-URL captures.
 - `Smart Clip` for AI-assisted field preparation with an approval screen.

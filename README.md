@@ -81,7 +81,7 @@ Smart Clip runs through the provider selected in Settings: OpenAI, Anthropic, Go
 
 - The Notion integration secret and AI keys are stored in `chrome.storage.local`; they are not sent to a Notion Web Clipper server because this beta has no backend.
 - The extension talks directly to Notion and, when Smart Clip is used, the configured AI provider.
-- By default, Smart Clip sends a limited page-text excerpt to the selected AI provider. The Privacy setting can allow the full page text instead.
+- Smart Clip sends the full extracted page text to the selected AI provider after the user explicitly starts Smart Clip.
 - Do not commit real secrets. Local `.env` files, signing keys, and build output are ignored by Git.
 - OAuth is planned for a future Chrome Web Store release and is not available in this beta.
 

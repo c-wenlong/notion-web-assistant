@@ -25,7 +25,6 @@ import {
   byokProviderStorage,
   lastUsedDbStorage,
   resolveByokProvider,
-  sendFullPageTextToAiStorage,
 } from "~/storage/items";
 import ReviewDraft from "./ReviewDraft";
 import SubmitAction from "./SubmitAction";
@@ -48,7 +47,6 @@ export default function ClipperMain({
   const { value: anthropicKey } = useStorageItem(byokAnthropicKeyStorage);
   const { value: openRouterKey } = useStorageItem(byokOpenRouterKeyStorage);
   const { value: geminiKey } = useStorageItem(byokGeminiKeyStorage);
-  const { value: sendFullPageText } = useStorageItem(sendFullPageTextToAiStorage);
   const [dataSources, setDataSources] = useState<ReadonlyArray<{ id: string; name: string }>>([]);
   const [db, setDb] = useState("");
   const [title, setTitle] = useState("");
@@ -247,7 +245,7 @@ export default function ClipperMain({
         page: {
           title,
           url: pageUrl,
-          text: sendFullPageText ? pageText : pageText.slice(0, 1500),
+          text: pageText,
         },
         fields,
       });
