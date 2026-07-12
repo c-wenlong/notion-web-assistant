@@ -87,7 +87,7 @@ Smart Clip runs through the provider selected in Settings: OpenAI, Anthropic, Go
 - Do not commit real secrets. Local `.env` files, signing keys, and build output are ignored by Git.
 - OAuth is planned for a future release and is not available in v1.
 
-See [SECURITY.md](SECURITY.md) for reporting guidance.
+See the [Privacy Policy](PRIVACY.md) for complete data-handling disclosures and [SECURITY.md](SECURITY.md) for reporting guidance.
 
 ## Development
 
