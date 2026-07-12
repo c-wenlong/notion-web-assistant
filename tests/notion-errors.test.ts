@@ -170,6 +170,32 @@ test("parses a fenced JSON draft from a Responses API message", () => {
   assert.equal(fields[0]?.value, "A paper summary.");
 });
 
+test("requests a strict OpenAI schema so valid JSON cannot omit the fields array", async () => {
+  const fields = [{ id: "summary", name: "Summary", type: "rich_text" as const, options: [] }];
+  const result = await analyzeWithProvider({
+    provider: "openai",
+    apiKey: "sk-test",
+    page: { title: "Article", url: "https://example.com/article", text: "A useful summary." },
+    fields,
+    fetcher: async (_url, init) => {
+      const body = JSON.parse(String(init.body)) as {
+        text?: { format?: { type?: string; strict?: boolean; schema?: unknown } };
+      };
+      const format = body.text?.format;
+      const outputText = format?.type === "json_schema"
+        ? '{"fields":[{"id":"summary","value":"A useful summary."}]}'
+        : '{"summary":"A useful summary."}';
+
+      assert.equal(format?.type, "json_schema");
+      assert.equal(format?.strict, true);
+      assert.ok(format?.schema);
+      return new Response(JSON.stringify({ output_text: outputText }), { status: 200 });
+    },
+  });
+
+  assert.equal(result[0]?.value, "A useful summary.");
+});
+
 test("uses Anthropic's Messages API for Smart Clip analysis", async () => {
   const fields = [{ id: "year", name: "Year", type: "select" as const, options: [] }];
   const result = await analyzeWithProvider({

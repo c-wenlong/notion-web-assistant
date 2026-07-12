@@ -177,6 +177,36 @@ function analysisPrompt(page: PageMetadata, fields: NotionField[]): string {
   });
 }
 
+function analysisOutputSchema(): Record<string, unknown> {
+  return {
+    type: "object",
+    properties: {
+      fields: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            value: {
+              anyOf: [
+                { type: "string" },
+                { type: "number" },
+                { type: "boolean" },
+                { type: "array", items: { type: "string" } },
+                { type: "null" },
+              ],
+            },
+          },
+          required: ["id", "value"],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ["fields"],
+    additionalProperties: false,
+  };
+}
+
 function boundedAnalysisInput(input: AnalyzeInput): Pick<AnalyzeInput, "page" | "fields"> {
   return {
     page: {
@@ -237,7 +267,14 @@ export async function analyzeWithOpenAi(input: AnalyzeInput): Promise<ReviewFiel
     body: JSON.stringify({
       model: ANALYSIS_MODEL,
       input: analysisPrompt(analysis.page, analysis.fields),
-      text: { format: { type: "json_object" } },
+      text: {
+        format: {
+          type: "json_schema",
+          name: "notion_clip_fields",
+          strict: true,
+          schema: analysisOutputSchema(),
+        },
+      },
     }),
   });
   if (!response.ok) return responseError("openai", response);

@@ -4,11 +4,15 @@ All notable changes to Notion Web Clipper are documented in this file.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## [1.0.1] - 2026-07-11
 
 ### Added
 
 - Default-on local Defuddle extraction with a Settings toggle for restoring the original page-text method.
+
+### Fixed
+
+- Prevented OpenAI Smart Clip from returning unreadable drafts by enforcing the expected field structure with Structured Outputs.
 
 ## [1.0.0] - 2026-07-11
 
