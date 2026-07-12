@@ -11,6 +11,7 @@ import {
   byokProviderStorage,
   notionTokenStorage,
   onboardingCompletedStorage,
+  resolveByokProvider,
   sendFullPageTextToAiStorage,
   themeStorage,
 } from "~/storage/items";
@@ -19,12 +20,11 @@ type Mode = "onboarding" | "settings";
 type SettingSection = "notion" | "ai" | "privacy" | "appearance";
 type ConnectionState = "idle" | "checking" | "connected" | "error";
 
-const PROVIDERS: ReadonlyArray<{ value: ByokProvider; label: string; placeholder: string }> = [
-  { value: "nano", label: "Nano (on-device)", placeholder: "" },
-  { value: "openai", label: "OpenAI", placeholder: "sk-..." },
-  { value: "anthropic", label: "Anthropic", placeholder: "sk-ant-..." },
-  { value: "openrouter", label: "OpenRouter", placeholder: "sk-or-..." },
-  { value: "gemini", label: "Gemini", placeholder: "AIza..." },
+const PROVIDERS: ReadonlyArray<{ value: ByokProvider; label: string; placeholder: string; keyUrl: string }> = [
+  { value: "openai", label: "OpenAI", placeholder: "sk-...", keyUrl: "https://platform.openai.com/api-keys" },
+  { value: "anthropic", label: "Anthropic", placeholder: "sk-ant-...", keyUrl: "https://console.anthropic.com/settings/keys" },
+  { value: "openrouter", label: "OpenRouter (Free)", placeholder: "sk-or-...", keyUrl: "https://openrouter.ai/keys" },
+  { value: "gemini", label: "Google Gemini", placeholder: "AIza...", keyUrl: "https://aistudio.google.com/apikey" },
 ];
 
 function providerInfo(provider: ByokProvider) {
@@ -45,6 +45,47 @@ function capitalize(value: string): string {
   return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
 
+function DatabasesPage({
+  dataSources,
+  refreshing,
+  onBack,
+  onRefresh,
+}: {
+  dataSources: ReadonlyArray<NotionDataSource>;
+  refreshing: boolean;
+  onBack: () => void;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className="nc-databases-page">
+      <header className="nc-databases-page__head">
+        <button type="button" className="nc-back-btn" onClick={onBack} aria-label="Back to settings" title="Back">{"\u2190"}</button>
+        <div>
+          <p className="nc-settings__eyebrow">Notion connection</p>
+          <h1 className="nc-settings__title">Databases</h1>
+        </div>
+        <button type="button" className="nc-databases-page__refresh" onClick={onRefresh} disabled={refreshing}>
+          {refreshing ? "Refreshing..." : "Refresh"}
+        </button>
+      </header>
+      <p className="nc-databases-page__summary">{databaseSummary(dataSources.length)}</p>
+      {dataSources.length > 0 ? (
+        <ul className="nc-databases-page__list">
+          {dataSources.map((source) => (
+            <li key={source.id}>
+              <a href={source.url} target="_blank" rel="noreferrer noopener" title={`Open ${source.name} in Notion`}>
+                {source.name}
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="nc-databases-page__empty">No databases are shared with this integration yet.</p>
+      )}
+    </div>
+  );
+}
+
 export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: () => void }) {
   const { value: token, set: writeToken, remove: clearToken } = useStorageItem(notionTokenStorage);
   const { value: provider, set: writeProvider } = useStorageItem(byokProviderStorage);
@@ -56,7 +97,7 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
   const { value: theme, set: writeTheme } = useStorageItem(themeStorage);
   const { set: setOnboardingCompleted } = useStorageItem(onboardingCompletedStorage);
 
-  const activeProvider = provider ?? "nano";
+  const activeProvider = resolveByokProvider(provider);
   const activeTheme = theme ?? "system";
   const activeProviderInfo = providerInfo(activeProvider);
   const savedKey = {
@@ -64,7 +105,6 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
     anthropic: anthropicKey,
     openrouter: openRouterKey,
     gemini: geminiKey,
-    nano: null,
   }[activeProvider];
 
   const [openSection, setOpenSection] = useState<SettingSection | null>("notion");
@@ -75,12 +115,13 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
   const [notionState, setNotionState] = useState<ConnectionState>("idle");
   const [notionError, setNotionError] = useState<string | null>(null);
   const [dataSources, setDataSources] = useState<ReadonlyArray<NotionDataSource>>([]);
+  const [showDatabases, setShowDatabases] = useState(false);
   const [aiState, setAiState] = useState<ConnectionState>("idle");
   const [aiError, setAiError] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
 
   useEffect(() => {
-    if (openSection !== "notion" || !token) return;
+    if (openSection !== "notion" || !token || notionState !== "idle") return;
 
     let cancelled = false;
     setNotionState("checking");
@@ -104,12 +145,11 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
   }, [openSection, token]);
 
   useEffect(() => {
+    if (provider === "nano") void writeProvider("openai");
+  }, [provider, writeProvider]);
+
+  useEffect(() => {
     if (openSection !== "ai") return;
-    if (activeProvider === "nano") {
-      setAiState("idle");
-      setAiError(null);
-      return;
-    }
     if (!savedKey) {
       setAiState("idle");
       setAiError(null);
@@ -147,8 +187,6 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
         break;
       case "gemini":
         await writeGeminiKey(value);
-        break;
-      case "nano":
         break;
     }
   }
@@ -248,15 +286,24 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
           ? "Check connection"
           : "Not connected";
   const aiSummary =
-    activeProvider === "nano"
-      ? "On-device"
-      : aiState === "checking"
-        ? "Checking connection"
-        : aiState === "connected"
-          ? "Connected"
-          : savedKey
-            ? "Check connection"
-            : "No key connected";
+    aiState === "checking"
+      ? "Checking connection"
+      : aiState === "connected"
+        ? "Connected"
+        : savedKey
+          ? "Check connection"
+          : "No key connected";
+
+  if (showDatabases) {
+    return (
+      <DatabasesPage
+        dataSources={dataSources}
+        refreshing={notionState === "checking"}
+        onBack={() => setShowDatabases(false)}
+        onRefresh={() => void connectNotion()}
+      />
+    );
+  }
 
   return (
     <div className="nc-settings">
@@ -298,7 +345,6 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
         </button>
         {openSection === "notion" && (
           <div id="popup-settings-notion" className="nc-settings__panel">
-            <p className="nc-settings__panel-copy">Paste an internal integration secret. It stays on this device.</p>
             <label className="nc-settings__label" htmlFor="popup-notion-token">Integration secret</label>
             <div className="nc-settings__input-wrap">
               <input
@@ -306,7 +352,6 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
                 type={showToken ? "text" : "password"}
                 value={tokenDraft}
                 onChange={(event) => setTokenDraft(event.target.value)}
-                placeholder={token ? "Connected - paste a new secret to replace" : "secret_... or ntn_..."}
                 autoComplete="off"
                 spellCheck={false}
                 className="nc-settings__input"
@@ -315,31 +360,23 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
                 {showToken ? "Hide" : "Show"}
               </button>
             </div>
+            <p className="nc-settings__field-note">Paste an internal integration secret. It stays on this device.</p>
             <div className="nc-settings__actions">
               <button type="button" className="nc-settings__action" onClick={() => void connectNotion()} disabled={notionState === "checking"}>
                 {notionState === "checking" ? "Checking..." : token ? "Check connection" : "Connect Notion"}
               </button>
               <a className="nc-settings__link" href="https://www.notion.so/my-integrations" target="_blank" rel="noreferrer noopener">
-                Create an integration in Notion
+                Create Notion integration
               </a>
             </div>
 
             {notionError && <p className="nc-settings__error" role="alert">{notionError}</p>}
             {notionState === "connected" && (
-              <div className="nc-settings__databases" aria-live="polite">
-                <div className="nc-settings__databases-head">
-                  <span>Databases this integration can access</span>
-                  <button type="button" className="nc-settings__text-btn" onClick={() => void connectNotion()}>
-                    Refresh
-                  </button>
-                </div>
-                {dataSources.length > 0 ? (
-                  <ul className="nc-settings__database-list">
-                    {dataSources.map((source) => <li key={source.id} title={source.name}>{source.name}</li>)}
-                  </ul>
-                ) : (
-                  <p className="nc-settings__empty">No databases are shared with this integration yet.</p>
-                )}
+              <div className="nc-settings__database-summary" aria-live="polite">
+                <span>{databaseSummary(dataSources.length)}</span>
+                <button type="button" className="nc-settings__text-btn" onClick={() => setShowDatabases(true)}>
+                  Show all
+                </button>
               </div>
             )}
             {token && (
@@ -385,42 +422,39 @@ export default function PopupSettings({ mode, onDone }: { mode: Mode; onDone: ()
               {PROVIDERS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
             </select>
 
-            {activeProvider === "nano" ? (
-              <p className="nc-settings__notice">Nano runs on-device and does not need an API key.</p>
-            ) : (
-              <>
-                <label className="nc-settings__label" htmlFor="popup-ai-key">API key</label>
-                <div className="nc-settings__input-wrap">
-                  <input
-                    id="popup-ai-key"
-                    type={showKey ? "text" : "password"}
-                    value={keyDraft}
-                    onChange={(event) => setKeyDraft(event.target.value)}
-                    placeholder={savedKey ? "A key is saved - paste a new key to replace" : activeProviderInfo.placeholder}
-                    autoComplete="off"
-                    spellCheck={false}
-                    className="nc-settings__input"
-                  />
-                  <button type="button" className="nc-settings__reveal" onClick={() => setShowKey((value) => !value)}>
-                    {showKey ? "Hide" : "Show"}
-                  </button>
-                </div>
-                <div className="nc-settings__actions">
-                  <button
-                    type="button"
-                    className="nc-settings__action"
-                    onClick={() => void checkAiConnection()}
-                    disabled={aiState === "checking" || (!keyDraft.trim() && !savedKey)}
-                  >
-                    {aiState === "checking" ? "Checking..." : keyDraft.trim() || !savedKey ? "Check and save key" : "Check saved key"}
-                  </button>
-                </div>
-                {activeProvider !== "openai" && (
-                  <p className="nc-settings__notice">The key is verified here; page analysis currently uses OpenAI.</p>
-                )}
-                {aiError && <p className="nc-settings__error" role="alert">{aiError}</p>}
-              </>
+            <label className="nc-settings__label" htmlFor="popup-ai-key">API key</label>
+            <div className="nc-settings__input-wrap">
+              <input
+                id="popup-ai-key"
+                type={showKey ? "text" : "password"}
+                value={keyDraft}
+                onChange={(event) => setKeyDraft(event.target.value)}
+                placeholder={savedKey ? "A key is saved - paste a new key to replace" : activeProviderInfo.placeholder}
+                autoComplete="off"
+                spellCheck={false}
+                className="nc-settings__input"
+              />
+              <button type="button" className="nc-settings__reveal" onClick={() => setShowKey((value) => !value)}>
+                {showKey ? "Hide" : "Show"}
+              </button>
+            </div>
+            <div className="nc-settings__actions">
+              <button
+                type="button"
+                className="nc-settings__action"
+                onClick={() => void checkAiConnection()}
+                disabled={aiState === "checking" || (!keyDraft.trim() && !savedKey)}
+              >
+                {aiState === "checking" ? "Checking..." : keyDraft.trim() || !savedKey ? "Check and save key" : "Check saved key"}
+              </button>
+            </div>
+            {activeProvider === "openrouter" && (
+              <p className="nc-settings__notice">
+                <span className="nc-settings__tag">Free</span>
+                Smart Clip uses OpenRouter's free model router. An OpenRouter API key is still required.
+              </p>
             )}
+            {aiError && <p className="nc-settings__error" role="alert">{aiError}</p>}
           </div>
         )}
       </section>

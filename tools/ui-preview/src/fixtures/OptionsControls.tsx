@@ -1,6 +1,6 @@
 // Side panel of mock controls for the Options view. Drives:
 //
-//   - BYOK provider choice (5 options incl. Nano)
+//   - BYOK provider choice
 //   - 4 per-provider BYOK key fields (OpenAI / Anthropic / OpenRouter / Gemini)
 //   - Send-full-page-text PII toggle (off by default per spec §7.2)
 //   - Auth mode (info-only in MVP Phase 4 placeholder)
@@ -28,9 +28,8 @@ import {
 const PROVIDER_OPTIONS: ReadonlyArray<{ id: ByokProvider; label: string }> = [
   { id: "openai", label: "OpenAI" },
   { id: "anthropic", label: "Anthropic" },
-  { id: "openrouter", label: "OpenRouter" },
-  { id: "gemini", label: "Gemini" },
-  { id: "nano", label: "Nano" },
+  { id: "openrouter", label: "OpenRouter (Free)" },
+  { id: "gemini", label: "Google Gemini" },
 ];
 
 const FAKE_OPENAI_KEY = "sk-PREVIEW_OPENAI_KEY_replace_with_real";
@@ -92,7 +91,7 @@ export function OptionsControls() {
         <span className="preview__ctl-label">BYOK provider</span>
         <select
           className="preview__select"
-          value={provider ?? "nano"}
+          value={provider === "nano" ? "openai" : provider ?? "openai"}
           onChange={(e) => void writeProvider(e.target.value as ByokProvider)}
         >
           {PROVIDER_OPTIONS.map((p) => (
@@ -102,9 +101,7 @@ export function OptionsControls() {
           ))}
         </select>
         <span className="preview__status">
-          {provider === "nano"
-            ? "Nano: on-device only, no key needed"
-            : `${provider} selected \u2192 key field visible`}
+          {`${provider === "nano" ? "openai" : provider ?? "openai"} selected \u2192 key field visible`}
         </span>
       </div>
 

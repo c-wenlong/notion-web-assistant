@@ -76,11 +76,8 @@ Chosen Notion API version: **`2025-09-03`** (handles the new Data Sources abstra
 ### 3.3 AI provider strategy
 
 - **Primary: BYOK (Bring Your Own Key).** User pastes an OpenAI / Anthropic / OpenRouter / Gemini API key in the options page. Extension calls the API directly (with the relevant domain added to `host_permissions`).
-- **Fallback: Chrome built-in Prompt API (`window.ai.languageModel`).** Used **only** when the user has no BYOK key AND the task is low-complexity (summarize selection → 3 bullets, language detection of page).
-- **Routing rule:**
-  - Schema-bound extraction (Zod-validated JSON for property fields) → BYOK always.
-  - Free-form summaries / keyword generation → Nano if no BYOK.
-  - BYOK is always preferred if configured. Nano never sees the full URL or HTML.
+- **Browser-native fallback:** Deferred. Chrome's Prompt API is not part of the beta because no supported local-model runtime has been implemented.
+- **Routing rule:** Schema-bound extraction (Zod-validated JSON for property fields) uses the configured cloud provider. Smart Clip supports OpenAI, Anthropic, Google Gemini, and OpenRouter's free router.
 
 ### 3.4 Storage layout
 
@@ -117,7 +114,7 @@ If layer 1 fails, layer 2 is tried. If layer 2 fails, layer 3 runs. Failures are
 
 - **Baseline default payload: `{ Name, URL }` plus any user-defined fields.** Body content is **not** saved by default.
 - **Opt-in "Save full body" per database** — toggled in the popup or per-recipe. When enabled, the page body is parsed with `@mozilla/readability` plus a custom Normalizer and appended as Notion blocks (paragraph, heading, code, image, callout, quote, bookmark).
-- **Selection-mode clip** — if the user has a text selection when invoking the extension, only the selection + page URL/metadata are submitted. A "summarize selection" button surfaces the BYOK/Nano summary.
+- **Selection-mode clip** — if the user has a text selection when invoking the extension, only the selection + page URL/metadata are submitted. A "summarize selection" button can use a configured cloud AI provider.
 
 #### Image lifecycle (when "Save full body" is on)
 
@@ -289,7 +286,7 @@ Three query types are required at MVP:
 - Layered extraction (CSS selector → AI → manual override).
 - Field-level mapping with type validation.
 - Save with baseline `Name + URL + user-defined fields`.
-- Selection-mode clip with optional Nano/BYOK summary.
+- Selection-mode clip with an optional cloud-AI summary.
 - **Image lifecycle**: OffscreenCanvas compression (max 1600 px wide, JPEG q85), SHA-256 dedupe, sequential direct upload with per-image failure UX.
 - Two prebuilt site adapters (arXiv, Amazon Books) plus their seed recipes.
 - **Extensible recipe plugin registry** (`RecipeStepHandler` interface + 6 built-in handlers).
@@ -333,7 +330,7 @@ Three query types are required at MVP:
    - Copy secret token.
    - Back in extension: paste token (with reveal toggle).
    - "Pick a Notion DB to test" — pulls list of DBs shared with the integration.
-3. "Pick an AI provider" — paste BYOK or pick "skip for now (use Chrome Nano for simple tasks)".
+3. "Pick an AI provider" — connect a supported provider for cloud-assisted extraction.
 4. Optional: "Create your Config DB" — one-click template creation in Notion.
 5. Optional: "Try the arXiv sample recipe" — guides through one real clip.
 
@@ -451,19 +448,18 @@ src/
     extraction/
       readability.ts          // @mozilla/readability wrapper
       cssSelector.ts          // layer 2
-      aiExtractor.ts          // layer 3 (BYOK or Nano)
+      aiExtractor.ts          // layer 3 (cloud AI)
       adapters/
         arxiv.ts
         amazonBooks.ts
         openLibrary.ts
     ai/
-      router.ts               // BYOK vs Nano decision logic
+      router.ts               // provider decision logic
       providers/
         openai.ts
         anthropic.ts
         openrouter.ts
         gemini.ts
-        nano.ts               // window.ai.languageModel wrapper
       schemas.ts              // zod schemas per extraction field
     recipes/
       registry.ts             // RecipeStepHandler registry + kind lookup

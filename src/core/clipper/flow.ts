@@ -16,6 +16,7 @@ export type ClipperFlowAction =
   | { type: "analysisReady"; fields: ReviewField[] }
   | { type: "reviewFieldChanged"; id: string; value: DraftValue }
   | { type: "approvalStarted" }
+  | { type: "approvalDuplicate" }
   | { type: "approvalFailed"; message: string }
   | { type: "approvalSaved"; pageUrl: string }
   | { type: "backToClip" };
@@ -57,6 +58,8 @@ export function clipperFlowReducer(state: ClipperFlow, action: ClipperFlowAction
       return state.screen === "review"
         ? { ...state, saving: false, saveError: action.message }
         : state;
+    case "approvalDuplicate":
+      return state.screen === "review" ? { ...state, saving: false } : state;
     case "approvalSaved":
       return state.screen === "review"
         ? { ...state, saving: false, savedPageUrl: action.pageUrl }

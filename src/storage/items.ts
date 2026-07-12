@@ -100,19 +100,26 @@ export const sendFullPageTextToAiStorage = storage.defineItem<boolean>(
 // ── BYOK AI provider (spec §3.3) ────────────────────────────────────────────
 // Stored in local: keys themselves must NOT roam across devices even if the
 // "use BYOK" preference does. Provider choice roams via byokEnabledStorage
-// (sync). If the user disables byokEnabled globally, the AI router falls back
-// to whichever provider Live in `byokProviderStorage` (defaults to 'nano').
+// (sync).
 export type ByokProvider =
   | "openai"
   | "anthropic"
   | "openrouter"
-  | "gemini"
-  | "nano";
+  | "gemini";
 
-export const byokProviderStorage = storage.defineItem<ByokProvider>(
+// Nano was shown in early beta builds but never had a local-model runtime.
+// Retain its legacy value only long enough to map existing installations to
+// the supported OpenAI default.
+export type StoredByokProvider = ByokProvider | "nano";
+
+export const byokProviderStorage = storage.defineItem<StoredByokProvider>(
   "local:byok.provider",
-  { fallback: "nano" },
+  { fallback: "openai" },
 );
+
+export function resolveByokProvider(value: StoredByokProvider | undefined): ByokProvider {
+  return value === "nano" ? "openai" : value ?? "openai";
+}
 
 export const byokOpenaiKeyStorage = storage.defineItem<string | null>(
   "local:byok.openaiKey",

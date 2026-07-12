@@ -7,7 +7,7 @@ interface ConnectionRequest {
   init: RequestInit;
 }
 
-function connectionRequest(provider: Exclude<ByokProvider, "nano">, apiKey: string): ConnectionRequest {
+function connectionRequest(provider: ByokProvider, apiKey: string): ConnectionRequest {
   switch (provider) {
     case "openai":
       return {
@@ -37,23 +37,19 @@ function connectionRequest(provider: Exclude<ByokProvider, "nano">, apiKey: stri
   }
 }
 
-function connectionError(provider: Exclude<ByokProvider, "nano">, status: number): string {
+function connectionError(provider: ByokProvider, status: number): string {
   const name = provider === "openai" ? "OpenAI" : provider === "openrouter" ? "OpenRouter" : provider === "gemini" ? "Gemini" : "Anthropic";
   if (status === 401 || status === 403) return `${name} did not accept that API key.`;
   if (status === 429) return `${name} is busy. Try checking the connection again in a moment.`;
   return `${name} could not verify that API key.`;
 }
 
-/**
- * Verify a cloud provider key with a read-only endpoint before persisting it.
- * Nano runs in the browser and intentionally has no remote credential check.
- */
+/** Verify a cloud provider key with a read-only endpoint before persisting it. */
 export async function validateAiProvider(
   provider: ByokProvider,
   apiKey: string,
   fetcher: Fetcher = fetch,
 ): Promise<void> {
-  if (provider === "nano") return;
   if (!apiKey.trim()) throw new Error("Paste an API key before checking the connection.");
 
   const request = connectionRequest(provider, apiKey.trim());

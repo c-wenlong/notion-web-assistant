@@ -1,7 +1,11 @@
 # Notion Web Clipper
 
 <p align="center">
-  <img src="src/assets/mascot.png" width="96" alt="Notion Web Clipper mascot">
+  <img src="src/assets/sprites/cheering.png" width="72" alt="Notion Web Clipper mascot cheering">
+  <img src="src/assets/sprites/walking.png" width="72" alt="Notion Web Clipper mascot walking">
+  <img src="src/assets/sprites/running.png" width="72" alt="Notion Web Clipper mascot running">
+  <img src="src/assets/sprites/sitting.png" width="72" alt="Notion Web Clipper mascot sitting">
+  <img src="src/assets/sprites/standing.png" width="72" alt="Notion Web Clipper mascot standing">
 </p>
 
 <p align="center">Save useful pages to the Notion databases you already use.</p>
@@ -19,6 +23,7 @@
 
 - Lists the Notion databases shared with your integration.
 - Saves the page title to Notion's title property and the current page URL to a URL property.
+- Uses the page URL as a duplicate key and lets you cancel or overwrite a matching row before writing.
 - Creates a `URL` property when the selected database does not have one.
 - Offers two capture paths: `Quick Clip` for title and URL only, and `Smart Clip` for an AI-prepared, editable review before saving.
 - Lets you connect and verify your Notion integration and AI key from the extension popup.
@@ -70,13 +75,13 @@ The selected database needs a title property. Notion Web Clipper uses it for the
 | **Quick Clip** | Immediately creates a row containing only the page title and URL. No page text is sent to an AI provider. |
 | **Smart Clip** | Reads the selected database's compatible properties, asks the configured AI provider to prepare values, shows an editable review, and saves only after you approve. |
 
-Smart Clip currently uses an OpenAI key for page analysis. The settings screen can store and validate OpenAI, Anthropic, OpenRouter, and Gemini keys in preparation for broader provider routing.
+Smart Clip runs through the provider selected in Settings: OpenAI, Anthropic, Google Gemini, or OpenRouter. OpenRouter uses its `openrouter/free` model router, so there is no model charge, but an OpenRouter API key is still required and its free models can have lower limits or availability.
 
 ## Privacy and Security
 
 - The Notion integration secret and AI keys are stored in `chrome.storage.local`; they are not sent to a Notion Web Clipper server because this beta has no backend.
 - The extension talks directly to Notion and, when Smart Clip is used, the configured AI provider.
-- By default, Smart Clip sends a limited page-text excerpt to OpenAI. The Privacy setting can allow the full page text instead.
+- By default, Smart Clip sends a limited page-text excerpt to the selected AI provider. The Privacy setting can allow the full page text instead.
 - Do not commit real secrets. Local `.env` files, signing keys, and build output are ignored by Git.
 - OAuth is planned for a future Chrome Web Store release and is not available in this beta.
 

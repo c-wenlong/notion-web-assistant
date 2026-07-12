@@ -3,6 +3,7 @@ import { getAuthStrategy } from "~/core/auth";
 export interface NotionDataSource {
   id: string;
   name: string;
+  url: string;
 }
 
 interface SearchResponse {
@@ -48,7 +49,12 @@ function dataSourceFromSearchResult(value: unknown): NotionDataSource | null {
     titleText(result.title) ||
     "Untitled database";
 
-  return { id: result.id, name };
+  return {
+    id: result.id,
+    name,
+    // Notion accepts the data-source identifier in a direct workspace URL.
+    url: `https://www.notion.so/${result.id.replaceAll("-", "")}`,
+  };
 }
 
 function responseError(status: number): string {

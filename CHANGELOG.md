@@ -4,6 +4,18 @@ All notable changes to Notion Web Clipper are documented in this file.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- Smart Clip adapters for Anthropic and Google Gemini.
+- OpenRouter Smart Clip support through its `openrouter/free` router, with a visible Free label and API-key requirement.
+- URL-based duplicate detection with a cancel-or-overwrite confirmation before a Notion write.
+
+### Changed
+
+- Removed the non-functional Chrome Nano provider option and migrated any saved Nano choice to OpenAI.
+
 ## [0.1.0] - 2026-07-11
 
 ### Added
@@ -21,4 +33,4 @@ The project follows [Semantic Versioning](https://semver.org/).
 ### Notes
 
 - OAuth and automatic Chrome Web Store deployment are not part of this beta.
-- Smart Clip currently uses OpenAI for page analysis.
+- Smart Clip supports the configured cloud provider for page analysis.

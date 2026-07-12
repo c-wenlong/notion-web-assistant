@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { approvedNotionProperties, normalizeAiFields, parseOpenAiAnalysis } from "../src/core/ai/analyze";
+import { analyzeWithProvider, approvedNotionProperties, normalizeAiFields, parseOpenAiAnalysis } from "../src/core/ai/analyze";
 import { validateAiProvider } from "../src/core/ai/connection";
 import { clipperFlowReducer, initialClipperFlow } from "../src/core/clipper/flow";
 import { formatNotionError } from "../src/core/notion/errors";
@@ -94,6 +94,71 @@ test("parses a fenced JSON draft from a Responses API message", () => {
   assert.equal(fields[0]?.value, "A paper summary.");
 });
 
+test("uses Anthropic's Messages API for Smart Clip analysis", async () => {
+  const fields = [{ id: "year", name: "Year", type: "select" as const, options: [] }];
+  const result = await analyzeWithProvider({
+    provider: "anthropic",
+    apiKey: "sk-ant-test",
+    page: { title: "Paper", url: "https://example.com/paper", text: "Published in 2025." },
+    fields,
+    fetcher: async (url, init) => {
+      assert.equal(url, "https://api.anthropic.com/v1/messages");
+      assert.equal(new Headers(init.headers).get("x-api-key"), "sk-ant-test");
+      assert.equal(new Headers(init.headers).get("anthropic-version"), "2023-06-01");
+      const body = JSON.parse(String(init.body)) as { messages?: Array<{ content?: string }> };
+      assert.match(body.messages?.[0]?.content ?? "", /Published in 2025/);
+      return new Response(JSON.stringify({
+        content: [{ type: "text", text: '{"fields":[{"id":"year","value":"2025"}]}' }],
+      }), { status: 200 });
+    },
+  });
+
+  assert.equal(result[0]?.value, "2025");
+});
+
+test("uses Google Gemini's generateContent API for Smart Clip analysis", async () => {
+  const fields = [{ id: "year", name: "Year", type: "select" as const, options: [] }];
+  const result = await analyzeWithProvider({
+    provider: "gemini",
+    apiKey: "AIza-test",
+    page: { title: "Paper", url: "https://example.com/paper", text: "Published in 2025." },
+    fields,
+    fetcher: async (url, init) => {
+      assert.match(url, /models\/gemini-2\.5-flash:generateContent$/);
+      assert.equal(new Headers(init.headers).get("x-goog-api-key"), "AIza-test");
+      const body = JSON.parse(String(init.body)) as { generationConfig?: { responseMimeType?: string } };
+      assert.equal(body.generationConfig?.responseMimeType, "application/json");
+      return new Response(JSON.stringify({
+        candidates: [{ content: { parts: [{ text: '{"fields":[{"id":"year","value":"2025"}]}' }] } }],
+      }), { status: 200 });
+    },
+  });
+
+  assert.equal(result[0]?.value, "2025");
+});
+
+test("uses OpenRouter's free model router for Smart Clip analysis", async () => {
+  const fields = [{ id: "year", name: "Year", type: "select" as const, options: [] }];
+  const result = await analyzeWithProvider({
+    provider: "openrouter",
+    apiKey: "sk-or-test",
+    page: { title: "Paper", url: "https://example.com/paper", text: "Published in 2025." },
+    fields,
+    fetcher: async (url, init) => {
+      assert.equal(url, "https://openrouter.ai/api/v1/chat/completions");
+      assert.equal(new Headers(init.headers).get("Authorization"), "Bearer sk-or-test");
+      const body = JSON.parse(String(init.body)) as { model?: string; response_format?: { type?: string } };
+      assert.equal(body.model, "openrouter/free");
+      assert.equal(body.response_format?.type, "json_object");
+      return new Response(JSON.stringify({
+        choices: [{ message: { content: '{"fields":[{"id":"year","value":"2025"}]}' } }],
+      }), { status: 200 });
+    },
+  });
+
+  assert.equal(result[0]?.value, "2025");
+});
+
 test("checks an OpenAI key against its read-only models endpoint", async () => {
   let requestedUrl = "";
   let authorization = "";
@@ -131,6 +196,9 @@ test("keeps analysis local until a user approves and then records the saved Noti
   assert.equal(saving.screen, "review");
   if (saving.screen !== "review") throw new Error("Expected review state");
   assert.equal(saving.saving, true);
+
+  const duplicate = clipperFlowReducer(saving, { type: "approvalDuplicate" });
+  assert.deepEqual(duplicate, { ...reviewing, saving: false });
 
   const saved = clipperFlowReducer(saving, {
     type: "approvalSaved",

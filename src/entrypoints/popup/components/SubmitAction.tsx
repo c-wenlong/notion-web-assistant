@@ -10,7 +10,7 @@ export default function SubmitAction({
   className = "",
 }: {
   disabled: boolean;
-  onSave: () => Promise<{ pageUrl: string }>;
+  onSave: () => Promise<{ pageUrl: string } | null>;
   label: string;
   savedLabel: string;
   className?: string;
@@ -30,6 +30,10 @@ export default function SubmitAction({
     setError(null);
     try {
       const result = await onSave();
+      if (!result) {
+        setState("idle");
+        return;
+      }
       setSavedPageUrl(result.pageUrl);
       setState("saved");
     } catch (reason) {

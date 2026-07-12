@@ -1,13 +1,11 @@
 // AIProviderCard — second card on the Options page. Lets the user pick one
-// of five AI providers and (for the 4 BYOK ones) paste a corresponding API
-// key. Default = 'nano' (Chrome built-in Prompt API) per spec §3.3; BYOK is
-// preferred when configured.
+// of supported cloud AI providers and paste a corresponding API key.
 //
 // The actual `core/ai/router.ts` decision logic (when it lands) reads
 // `byokProviderStorage` + the per-provider key storage items and routes the
 // request. This card is the source-of-truth UI for those settings.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ByokProvider } from "~/storage/items";
 import { useStorageItem } from "~/storage/react";
 import {
@@ -16,6 +14,7 @@ import {
   byokOpenaiKeyStorage,
   byokOpenRouterKeyStorage,
   byokProviderStorage,
+  resolveByokProvider,
 } from "~/storage/items";
 
 interface ProviderDescriptor {
@@ -51,21 +50,13 @@ const PROVIDERS: ReadonlyArray<ProviderDescriptor> = [
   },
   {
     id: "gemini",
-    shortLabel: "Gemini",
+    shortLabel: "Google Gemini",
     helpUrl: "https://aistudio.google.com/apikey",
     keyPlaceholder: "AIza\u2026",
     keyFormat: "Starts with AIza",
   },
-  {
-    id: "nano",
-    shortLabel: "Nano",
-    helpUrl: "",
-    keyPlaceholder: "",
-    keyFormat: "",
-  },
 ];
 
-/** Map provider id to its key storage item. Returns null for Nano (no key). */
 function keyStorageFor(provider: ByokProvider) {
   switch (provider) {
     case "openai":
@@ -76,13 +67,11 @@ function keyStorageFor(provider: ByokProvider) {
       return byokOpenRouterKeyStorage;
     case "gemini":
       return byokGeminiKeyStorage;
-    case "nano":
-      return null;
   }
 }
 
 function shortProvider(p: ByokProvider): ProviderDescriptor {
-  // noUncheckedIndexedAccess: PROVIDERS always contains all five.
+  // noUncheckedIndexedAccess: PROVIDERS always contains all supported providers.
   const found = PROVIDERS.find((d) => d.id === p);
   if (!found) {
     throw new Error(`AIProviderCard: unknown provider "${p}"`);
@@ -96,8 +85,6 @@ interface KeyFieldProps {
 
 function KeyField({ provider }: KeyFieldProps) {
   const storage = keyStorageFor(provider.id);
-  // Nano has no storage; the parent routes here only for BYOK providers.
-  if (!storage) return null;
   const { value: key, set: writeKey } = useStorageItem(storage);
   const [draft, setDraft] = useState("");
   const [show, setShow] = useState(false);
@@ -181,8 +168,12 @@ function KeyField({ provider }: KeyFieldProps) {
 export default function AIProviderCard() {
   const { value: provider, set: writeProvider } =
     useStorageItem(byokProviderStorage);
-  const active = provider ?? "nano";
+  const active = resolveByokProvider(provider);
   const activeDescriptor = shortProvider(active);
+
+  useEffect(() => {
+    if (provider === "nano") void writeProvider("openai");
+  }, [provider, writeProvider]);
 
   return (
     <section className="nc-opt__card">
@@ -190,8 +181,8 @@ export default function AIProviderCard() {
         <h2 className="nc-opt__card-title">AI provider</h2>
         <p className="nc-opt__card-desc">
           Pick the model that powers recipe extraction, summaries, and field
-          inference. Bring Your Own Key is preferred when configured — Nano
-          runs locally as the no-setup fallback per spec §3.3.
+          inference. Smart Clip runs through the selected provider. OpenRouter
+          uses its free model router and still requires an API key.
         </p>
       </div>
 
@@ -216,29 +207,16 @@ export default function AIProviderCard() {
                 onClick={() => {
                   void writeProvider(p.id);
                 }}
-                title={
-                  p.id === "nano"
-                    ? "Chrome built-in Prompt API (on-device, no key)"
-                    : `Use ${p.shortLabel} with your own API key`
-                }
+                title={`Use ${p.shortLabel} with your own API key`}
               >
                 {p.shortLabel}
+                {p.id === "openrouter" && <span className="nc-opt__provider-tag">Free</span>}
               </button>
             ))}
           </div>
         </div>
 
-        {active !== "nano" && <KeyField provider={activeDescriptor} />}
-
-        {active === "nano" && (
-          <p className="nc-opt__notice nc-opt__notice--warn">
-            <strong>Chrome Nano (on-device)</strong> is used for simple tasks
-            only — summary of a selection, language detection. It will not be
-            used for schema-bound property extraction; that path always
-            requires a cloud model. Where supported, paste a key above to
-            upgrade.
-          </p>
-        )}
+        <KeyField provider={activeDescriptor} />
 
         <div className="nc-opt__btn-row">
           <button

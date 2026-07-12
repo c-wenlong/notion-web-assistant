@@ -1,5 +1,6 @@
 import type { NotionField } from "~/core/notion/fields";
 import type { PageMetadata } from "~/shared/pageMetadata";
+import type { ByokProvider } from "~/storage/items";
 
 export type DraftValue = string | number | boolean | string[] | null;
 
@@ -12,13 +13,20 @@ export interface OpenAiResponse {
   output?: unknown;
 }
 
+type Fetcher = (url: string, init: RequestInit) => Promise<Response>;
+
 interface AiResponseField {
   id?: unknown;
   value?: unknown;
 }
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
+const GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
 const ANALYSIS_MODEL = "gpt-5.4-mini";
+const ANTHROPIC_ANALYSIS_MODEL = "claude-haiku-4-5-20251001";
+const OPENROUTER_FREE_MODEL = "openrouter/free";
 const MAX_RICH_TEXT_LENGTH = 2000;
 
 function outputText(value: unknown): string | null {
@@ -92,17 +100,24 @@ function jsonObjectText(text: string): string {
   return start >= 0 && end > start ? trimmed.slice(start, end + 1) : trimmed;
 }
 
-/** Parse a completed Responses API payload into the constrained local draft. */
-export function parseOpenAiAnalysis(payload: OpenAiResponse, fields: NotionField[]): ReviewField[] {
-  const text = outputText(payload.output_text) ?? outputText(payload.output);
-  if (!text) throw new Error("OpenAI returned no analysis.");
+function parseAnalysisText(text: string | null, fields: NotionField[], providerName: string): ReviewField[] {
+  if (!text) throw new Error(`${providerName} returned no analysis.`);
   try {
     const parsed = JSON.parse(jsonObjectText(text)) as { fields?: unknown };
     if (!Array.isArray(parsed.fields)) throw new Error("Missing fields array");
     return normalizeAiFields(fields, parsed.fields);
   } catch {
-    throw new Error("OpenAI returned an unreadable analysis. Try again.");
+    throw new Error(`${providerName} returned an unreadable analysis. Try again.`);
   }
+}
+
+/** Parse a completed Responses API payload into the constrained local draft. */
+export function parseOpenAiAnalysis(payload: OpenAiResponse, fields: NotionField[]): ReviewField[] {
+  return parseAnalysisText(
+    outputText(payload.output_text) ?? outputText(payload.output),
+    fields,
+    "OpenAI",
+  );
 }
 
 /** Translate the approved local draft into Notion page property values. */
@@ -152,31 +167,132 @@ function analysisPrompt(page: PageMetadata, fields: NotionField[]): string {
   });
 }
 
-function aiError(status: number): string {
-  if (status === 401) return "Your OpenAI API key is not valid.";
-  if (status === 429) return "OpenAI is busy. Try analyzing again in a moment.";
-  return "OpenAI could not analyze this page.";
+function providerName(provider: ByokProvider): string {
+  switch (provider) {
+    case "openai":
+      return "OpenAI";
+    case "anthropic":
+      return "Anthropic";
+    case "openrouter":
+      return "OpenRouter";
+    case "gemini":
+      return "Google Gemini";
+  }
 }
 
-export async function analyzeWithOpenAi({
-  apiKey,
-  page,
-  fields,
-}: {
+function aiError(provider: ByokProvider, status: number): string {
+  const name = providerName(provider);
+  if (status === 401 || status === 403) return `Your ${name} API key is not valid.`;
+  if (status === 429) return `${name} is busy. Try analyzing again in a moment.`;
+  return `${name} could not analyze this page.`;
+}
+
+async function responseError(provider: ByokProvider, response: Response): Promise<never> {
+  const detail = await response.text().catch(() => "");
+  const base = aiError(provider, response.status);
+  throw new Error(detail ? `${base} ${detail.slice(0, 300)}` : base);
+}
+
+interface AnalyzeInput {
   apiKey: string;
   page: PageMetadata;
   fields: NotionField[];
-}): Promise<ReviewField[]> {
-  const response = await fetch(OPENAI_RESPONSES_URL, {
+  fetcher?: Fetcher;
+}
+
+function request(input: AnalyzeInput, url: string, init: RequestInit): Promise<Response> {
+  return (input.fetcher ?? fetch)(url, init);
+}
+
+export async function analyzeWithOpenAi(input: AnalyzeInput): Promise<ReviewField[]> {
+  const response = await request(input, OPENAI_RESPONSES_URL, {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${input.apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: ANALYSIS_MODEL,
-      input: analysisPrompt(page, fields),
+      input: analysisPrompt(input.page, input.fields),
       text: { format: { type: "json_object" } },
     }),
   });
-  if (!response.ok) throw new Error(aiError(response.status));
+  if (!response.ok) return responseError("openai", response);
 
-  return parseOpenAiAnalysis((await response.json()) as OpenAiResponse, fields);
+  return parseOpenAiAnalysis((await response.json()) as OpenAiResponse, input.fields);
+}
+
+async function analyzeWithAnthropic(input: AnalyzeInput): Promise<ReviewField[]> {
+  const response = await request(input, ANTHROPIC_MESSAGES_URL, {
+    method: "POST",
+    headers: {
+      "x-api-key": input.apiKey,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: ANTHROPIC_ANALYSIS_MODEL,
+      max_tokens: 2048,
+      messages: [{ role: "user", content: analysisPrompt(input.page, input.fields) }],
+    }),
+  });
+  if (!response.ok) return responseError("anthropic", response);
+
+  const payload = (await response.json()) as { content?: Array<{ type?: unknown; text?: unknown }> };
+  const text = payload.content?.find((item) => item.type === "text" && typeof item.text === "string")?.text;
+  return parseAnalysisText(typeof text === "string" ? text : null, input.fields, "Anthropic");
+}
+
+async function analyzeWithGemini(input: AnalyzeInput): Promise<ReviewField[]> {
+  const response = await request(input, GEMINI_GENERATE_URL, {
+    method: "POST",
+    headers: { "x-goog-api-key": input.apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: analysisPrompt(input.page, input.fields) }] }],
+      generationConfig: { responseMimeType: "application/json" },
+    }),
+  });
+  if (!response.ok) return responseError("gemini", response);
+
+  const payload = (await response.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: unknown }> } }>;
+  };
+  const text = payload.candidates?.[0]?.content?.parts?.find((part) => typeof part.text === "string")?.text;
+  return parseAnalysisText(typeof text === "string" ? text : null, input.fields, "Google Gemini");
+}
+
+async function analyzeWithOpenRouter(input: AnalyzeInput): Promise<ReviewField[]> {
+  const response = await request(input, OPENROUTER_CHAT_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${input.apiKey}`,
+      "Content-Type": "application/json",
+      "X-OpenRouter-Title": "Notion Web Clipper",
+    },
+    body: JSON.stringify({
+      model: OPENROUTER_FREE_MODEL,
+      messages: [{ role: "user", content: analysisPrompt(input.page, input.fields) }],
+      response_format: { type: "json_object" },
+    }),
+  });
+  if (!response.ok) return responseError("openrouter", response);
+
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: unknown } }>;
+  };
+  const text = payload.choices?.[0]?.message?.content;
+  return parseAnalysisText(typeof text === "string" ? text : null, input.fields, "OpenRouter");
+}
+
+export async function analyzeWithProvider({
+  provider,
+  ...input
+}: AnalyzeInput & { provider: ByokProvider }): Promise<ReviewField[]> {
+  switch (provider) {
+    case "openai":
+      return analyzeWithOpenAi(input);
+    case "anthropic":
+      return analyzeWithAnthropic(input);
+    case "gemini":
+      return analyzeWithGemini(input);
+    case "openrouter":
+      return analyzeWithOpenRouter(input);
+  }
 }

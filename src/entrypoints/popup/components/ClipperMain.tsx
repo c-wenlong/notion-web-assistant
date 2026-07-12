@@ -3,22 +3,39 @@
 
 import { useEffect, useReducer, useState } from "react";
 import type { ChangeEvent } from "react";
-import { analyzeWithOpenAi, approvedNotionProperties, type DraftValue, type ReviewField } from "~/core/ai/analyze";
+import { analyzeWithProvider, approvedNotionProperties, type DraftValue, type ReviewField } from "~/core/ai/analyze";
 import { listNotionDataSources } from "~/core/notion/dataSources";
 import { getAiFields } from "~/core/notion/fields";
-import { createNotionClip } from "~/core/notion/pages";
+import {
+  createNotionClip,
+  findNotionClipDuplicate,
+  overwriteNotionClip,
+  type CreateClipInput,
+  type DuplicateNotionPage,
+} from "~/core/notion/pages";
 import { getActivePageMetadata } from "~/core/page/activeTab";
 import { clipperFlowReducer, initialClipperFlow } from "~/core/clipper/flow";
-import { mascotUrl } from "~/shared/branding";
+import { mascotSpriteUrls } from "~/shared/branding";
 import { useStorageItem } from "~/storage/react";
 import {
+  byokAnthropicKeyStorage,
+  byokGeminiKeyStorage,
   byokOpenaiKeyStorage,
+  byokOpenRouterKeyStorage,
   byokProviderStorage,
   lastUsedDbStorage,
+  resolveByokProvider,
   sendFullPageTextToAiStorage,
 } from "~/storage/items";
 import ReviewDraft from "./ReviewDraft";
 import SubmitAction from "./SubmitAction";
+import DuplicateDialog from "./DuplicateDialog";
+
+type PendingDuplicate = {
+  clip: CreateClipInput;
+  duplicate: DuplicateNotionPage;
+  source: "quick" | "review" | "smart";
+};
 
 export default function ClipperMain({
   onOpenSettings,
@@ -26,8 +43,11 @@ export default function ClipperMain({
   onOpenSettings: () => void;
 }) {
   const { value: lastDb, set: setLastDb } = useStorageItem(lastUsedDbStorage);
-  const { value: provider } = useStorageItem(byokProviderStorage);
+  const { value: provider, set: writeProvider } = useStorageItem(byokProviderStorage);
   const { value: openAiKey } = useStorageItem(byokOpenaiKeyStorage);
+  const { value: anthropicKey } = useStorageItem(byokAnthropicKeyStorage);
+  const { value: openRouterKey } = useStorageItem(byokOpenRouterKeyStorage);
+  const { value: geminiKey } = useStorageItem(byokGeminiKeyStorage);
   const { value: sendFullPageText } = useStorageItem(sendFullPageTextToAiStorage);
   const [dataSources, setDataSources] = useState<ReadonlyArray<{ id: string; name: string }>>([]);
   const [db, setDb] = useState("");
@@ -39,6 +59,22 @@ export default function ClipperMain({
   const [dataSourceError, setDataSourceError] = useState<string | null>(null);
   const [dataSourceReload, setDataSourceReload] = useState(0);
   const [flow, dispatchFlow] = useReducer(clipperFlowReducer, initialClipperFlow);
+  const [pendingDuplicate, setPendingDuplicate] = useState<PendingDuplicate | null>(null);
+  const [overwriting, setOverwriting] = useState(false);
+  const [overwriteError, setOverwriteError] = useState<string | null>(null);
+  const [updatedDuplicateUrl, setUpdatedDuplicateUrl] = useState<string | null>(null);
+  const [smartOverwrite, setSmartOverwrite] = useState<DuplicateNotionPage | null>(null);
+  const activeProvider = resolveByokProvider(provider);
+  const providerKey = {
+    openai: openAiKey,
+    anthropic: anthropicKey,
+    openrouter: openRouterKey,
+    gemini: geminiKey,
+  }[activeProvider];
+
+  useEffect(() => {
+    if (provider === "nano") void writeProvider("openai");
+  }, [provider, writeProvider]);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,43 +144,106 @@ export default function ClipperMain({
     void setLastDb(id);
   }
 
-  async function saveQuickClip() {
+  function quickClipInput(): CreateClipInput {
     if (!pageUrl) throw new Error("Could not read the current page URL.");
-    return createNotionClip({
+    return {
       dataSourceId: db,
       title: title.trim(),
       url: pageUrl,
-    });
+    };
   }
 
-  async function saveEnrichedClip() {
+  function enrichedClipInput(): CreateClipInput {
     if (!pageUrl) throw new Error("Could not read the current page URL.");
-    return createNotionClip({
+    return {
       dataSourceId: db,
       title: title.trim(),
       url: pageUrl,
       properties: approvedNotionProperties(flow.screen === "review" ? flow.fields : []),
-    });
+    };
   }
 
-  async function analyzePage() {
-    if (!pageUrl) return;
-    dispatchFlow({ type: "analysisStarted" });
+  async function saveClip(clip: CreateClipInput, source: PendingDuplicate["source"]) {
+    const result = await createNotionClip(clip);
+    if (result.kind === "duplicate") {
+      setOverwriteError(null);
+      setUpdatedDuplicateUrl(null);
+      setPendingDuplicate({ clip, duplicate: result, source });
+      return null;
+    }
+    return result;
+  }
+
+  async function saveQuickClip() {
+    return saveClip(quickClipInput(), "quick");
+  }
+
+  async function saveEnrichedClip() {
+    return saveClip(enrichedClipInput(), "review");
+  }
+
+  function dismissDuplicate() {
+    setPendingDuplicate(null);
+    setOverwriteError(null);
+    setUpdatedDuplicateUrl(null);
+  }
+
+  async function overwriteDuplicate() {
+    if (!pendingDuplicate) return;
+    if (pendingDuplicate.source === "smart") {
+      const duplicate = pendingDuplicate.duplicate;
+      dismissDuplicate();
+      setSmartOverwrite(duplicate);
+      await analyzePage(true);
+      return;
+    }
+    setOverwriting(true);
+    setOverwriteError(null);
     try {
+      const result = await overwriteNotionClip(pendingDuplicate.duplicate.pageId, pendingDuplicate.clip);
+      if (pendingDuplicate.source === "review") {
+        dismissDuplicate();
+        dispatchFlow({ type: "approvalSaved", pageUrl: result.pageUrl });
+      } else {
+        setUpdatedDuplicateUrl(result.pageUrl);
+      }
+    } catch (reason) {
+      setOverwriteError(reason instanceof Error ? reason.message : "Could not overwrite the existing clip.");
+    } finally {
+      setOverwriting(false);
+    }
+  }
+
+  async function analyzePage(skipDuplicateCheck = false) {
+    if (!pageUrl) return;
+    try {
+      if (!skipDuplicateCheck) {
+        const clip = quickClipInput();
+        const duplicate = await findNotionClipDuplicate(clip);
+        if (duplicate) {
+          setOverwriteError(null);
+          setUpdatedDuplicateUrl(null);
+          setPendingDuplicate({ clip, duplicate, source: "smart" });
+          return;
+        }
+      }
+
+      dispatchFlow({ type: "analysisStarted" });
       const fields = await getAiFields(db);
       if (fields.length === 0) {
         dispatchFlow({ type: "analysisReady", fields: [] });
         return;
       }
-      if (provider !== "openai" || !openAiKey) {
+      if (!providerKey) {
         dispatchFlow({
           type: "analysisFailed",
-          message: "Choose OpenAI and save an API key in Settings before analyzing.",
+          message: `Add and verify a ${activeProvider === "gemini" ? "Google Gemini" : activeProvider === "openrouter" ? "OpenRouter" : activeProvider === "anthropic" ? "Anthropic" : "OpenAI"} API key in Settings before analyzing.`,
         });
         return;
       }
-      const analysis = await analyzeWithOpenAi({
-        apiKey: openAiKey,
+      const analysis = await analyzeWithProvider({
+        provider: activeProvider,
+        apiKey: providerKey,
         page: {
           title,
           url: pageUrl,
@@ -154,6 +253,7 @@ export default function ClipperMain({
       });
       dispatchFlow({ type: "analysisReady", fields: analysis });
     } catch (reason) {
+      if (skipDuplicateCheck) setSmartOverwrite(null);
       dispatchFlow({
         type: "analysisFailed",
         message: reason instanceof Error ? reason.message : "Could not analyze this page.",
@@ -164,7 +264,17 @@ export default function ClipperMain({
   async function approveAndSave() {
     dispatchFlow({ type: "approvalStarted" });
     try {
+      if (smartOverwrite) {
+        const result = await overwriteNotionClip(smartOverwrite.pageId, enrichedClipInput());
+        setSmartOverwrite(null);
+        dispatchFlow({ type: "approvalSaved", pageUrl: result.pageUrl });
+        return;
+      }
       const result = await saveEnrichedClip();
+      if (!result) {
+        dispatchFlow({ type: "approvalDuplicate" });
+        return;
+      }
       dispatchFlow({ type: "approvalSaved", pageUrl: result.pageUrl });
     } catch (reason) {
       dispatchFlow({
@@ -178,6 +288,21 @@ export default function ClipperMain({
     dispatchFlow({ type: "reviewFieldChanged", id, value });
   }
 
+  const duplicateDialog = pendingDuplicate && (
+    <DuplicateDialog
+      pageUrl={pendingDuplicate.duplicate.pageUrl}
+      overwriting={overwriting}
+      error={overwriteError}
+      updatedPageUrl={updatedDuplicateUrl}
+      actionLabel={pendingDuplicate.source === "smart" ? "Continue & overwrite" : "Overwrite"}
+      description={pendingDuplicate.source === "smart"
+        ? "Continue to prepare fields, then review before the existing row is replaced."
+        : "The existing row will stay unchanged unless you overwrite it."}
+      onCancel={dismissDuplicate}
+      onOverwrite={() => void overwriteDuplicate()}
+    />
+  );
+
   if (flow.screen === "review") {
     return (
       <>
@@ -188,22 +313,28 @@ export default function ClipperMain({
           onTitleChange={setTitle}
           onUrlChange={setPageUrl}
           onFieldChange={updateReviewField}
-          onBack={() => dispatchFlow({ type: "backToClip" })}
+          onBack={() => {
+            setSmartOverwrite(null);
+            dispatchFlow({ type: "backToClip" });
+          }}
           onApprove={() => void approveAndSave()}
           saving={flow.saving}
           savedPageUrl={flow.savedPageUrl}
         />
         {flow.saveError && <p className="nc-review__error" role="alert">{flow.saveError}</p>}
+        {duplicateDialog}
       </>
     );
   }
 
   return (
+    <>
     <div className="nc-main">
       <header className="nc-main__head">
         <div className="nc-main__brand">
-          <img className="nc-main__mascot" src={mascotUrl} alt="" />
-          <span className="nc-main__name">Notion Web Clipper</span>
+          <div className="nc-main__sprites" aria-label="Notion Web Clipper">
+            {mascotSpriteUrls.map((sprite) => <img key={sprite} src={sprite} alt="" />)}
+          </div>
         </div>
         <button
           className="nc-icon-btn"
@@ -290,5 +421,7 @@ export default function ClipperMain({
         </div>
       </footer>
     </div>
+    {duplicateDialog}
+    </>
   );
 }
