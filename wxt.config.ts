@@ -7,6 +7,7 @@ export default defineConfig({
   // `entrypointsDir` — concatenating it with `srcDir` causes a path-doubling
   // bug at wxt prepare time.
   srcDir: 'src',
+  publicDir: 'src/public',
   // Pin Notion API version per spec §3.2 — header injected by the API client.
   // Manifest V3 is the default in WXT.
   manifest: () => ({
