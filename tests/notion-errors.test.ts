@@ -308,6 +308,41 @@ test("keeps Gemini API keys out of validation URLs", async () => {
   assert.equal(apiKey, "AIza-test");
 });
 
+test("sends each Notion field's description to the AI provider", async () => {
+  let prompt = "";
+  const fields = [
+    {
+      id: "audience",
+      name: "Audience",
+      type: "select" as const,
+      options: ["Research", "Engineering"],
+      description: "Who the article is written for.",
+    },
+  ];
+
+  await analyzeWithProvider({
+    provider: "openai",
+    apiKey: "sk-test",
+    page: { title: "Paper", url: "https://example.com/paper", text: "A paper for engineers." },
+    fields,
+    fetcher: async (_url, init) => {
+      const body = JSON.parse(String(init.body)) as { input: string };
+      prompt = body.input;
+      return new Response(
+        JSON.stringify({ output_text: '{"fields":[{"id":"audience","value":"Engineering"}]}' }),
+        { status: 200 },
+      );
+    },
+  });
+
+  const parsed = JSON.parse(prompt) as {
+    rules: string[];
+    fields: Array<{ id: string; description?: string }>;
+  };
+  assert.equal(parsed.fields[0]?.description, "Who the article is written for.");
+  assert.ok(parsed.rules.some((rule) => /description/.test(rule)));
+});
+
 test("bounds Smart Clip data sent to AI providers", async () => {
   let prompt = "";
   const fields = Array.from({ length: 51 }, (_, index) => ({

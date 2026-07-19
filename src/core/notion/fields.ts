@@ -17,6 +17,7 @@ export interface NotionField {
   name: string;
   type: AiFieldType;
   options: string[];
+  description: string;
 }
 
 interface DataSourceResponse {
@@ -25,6 +26,7 @@ interface DataSourceResponse {
 
 interface RawProperty {
   id?: unknown;
+  description?: unknown;
   type?: unknown;
   select?: { options?: unknown };
   multi_select?: { options?: unknown };
@@ -76,6 +78,7 @@ export async function getAiFields(dataSourceId: string): Promise<NotionField[]> 
         : type === "multi_select"
           ? optionNames(property.multi_select?.options)
           : [];
-      return [{ id: property.id, name, type, options }];
+      const description = typeof property.description === "string" ? property.description.trim() : "";
+      return [{ id: property.id, name, type, options, description }];
     });
 }

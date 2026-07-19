@@ -750,6 +750,7 @@ button {
 .nc-review__multi { margin: 0; padding: 10px 16px; border: 0; border-bottom: 1px solid var(--border); }
 .nc-review__multi label { display: inline-flex; align-items: center; gap: 5px; margin: 0 10px 5px 0; font-size: 11.5px; }
 .nc-review__multi input { accent-color: var(--accent); }
+.nc-review__hint { display: block; margin: -2px 0 5px; color: var(--fg-muted); font-size: 11px; font-style: italic; font-weight: 400; line-height: 1.35; }
 .nc-review__foot { display: flex; gap: 8px; margin-top: auto; padding: 14px 16px 16px; }
 .nc-review__secondary, .nc-review__primary { min-height: 36px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 650; cursor: pointer; }
 .nc-review__secondary { border: 1px solid var(--border-strong); background: transparent; color: var(--fg-muted); padding: 0 12px; }

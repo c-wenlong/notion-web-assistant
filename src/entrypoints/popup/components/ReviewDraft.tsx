@@ -80,6 +80,7 @@ function ReviewFieldControl({ field, onChange }: { field: ReviewField; onChange:
       return (
         <label className="nc-review__field">
           <span>{field.name}</span>
+          {field.description && <em className="nc-review__hint">{field.description}</em>}
           <input
             value={valueForInput(field.value)}
             placeholder="New Notion option"
@@ -91,6 +92,7 @@ function ReviewFieldControl({ field, onChange }: { field: ReviewField; onChange:
     return (
       <label className="nc-review__field">
         <span>{field.name}</span>
+        {field.description && <em className="nc-review__hint">{field.description}</em>}
         <select value={valueForInput(field.value)} onChange={(event) => onChange(field.id, event.target.value || null)}>
           <option value="">No value</option>
           {field.options.map((option) => <option key={option} value={option}>{option}</option>)}
@@ -102,6 +104,7 @@ function ReviewFieldControl({ field, onChange }: { field: ReviewField; onChange:
     return (
       <fieldset className="nc-review__multi">
         <legend>{field.name}</legend>
+        {field.description && <em className="nc-review__hint">{field.description}</em>}
         {field.options.map((option) => {
           const selected = Array.isArray(field.value) && field.value.includes(option);
           return (
@@ -124,6 +127,7 @@ function ReviewFieldControl({ field, onChange }: { field: ReviewField; onChange:
   return (
     <label className="nc-review__field">
       <span>{field.name}</span>
+      {field.description && <em className="nc-review__hint">{field.description}</em>}
       <input
         type={field.type === "date" ? "date" : field.type === "number" ? "number" : "text"}
         value={valueForInput(field.value)}

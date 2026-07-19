@@ -31,6 +31,7 @@ const MAX_RICH_TEXT_LENGTH = 2000;
 const MAX_ANALYSIS_TEXT_LENGTH = 60_000;
 const MAX_ANALYSIS_FIELDS = 50;
 const MAX_FIELD_NAME_LENGTH = 160;
+const MAX_FIELD_DESCRIPTION_LENGTH = 500;
 const MAX_FIELD_OPTIONS = 50;
 const MAX_FIELD_OPTION_LENGTH = 120;
 
@@ -165,9 +166,16 @@ function analysisPrompt(page: PageMetadata, fields: NotionField[]): string {
       "Use null when a scalar value is unknown and [] when a multi-select value is unknown.",
       "For select and multi-select fields with options, use the provided options exactly. If a field has no options, propose one concise new option and never include commas in option values.",
       "Do not infer facts that are not present in the page text.",
+      "When a field includes a description, treat it as the field's intent and prefer values that match it.",
     ],
     page: { title: page.title, url: page.url, text: page.text },
-    fields: fields.map(({ id, name, type, options }) => ({ id, name, type, options })),
+    fields: fields.map(({ id, name, type, options, description }) => ({
+      id,
+      name,
+      type,
+      options,
+      description: description ?? "",
+    })),
   });
 }
 
@@ -211,6 +219,7 @@ function boundedAnalysisInput(input: AnalyzeInput): Pick<AnalyzeInput, "page" | 
     fields: input.fields.slice(0, MAX_ANALYSIS_FIELDS).map((field) => ({
       ...field,
       name: field.name.slice(0, MAX_FIELD_NAME_LENGTH),
+      description: (field.description ?? "").slice(0, MAX_FIELD_DESCRIPTION_LENGTH),
       options: field.options
         .slice(0, MAX_FIELD_OPTIONS)
         .map((option) => option.slice(0, MAX_FIELD_OPTION_LENGTH)),
