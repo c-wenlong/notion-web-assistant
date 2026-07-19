@@ -25,6 +25,9 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      # The preview keeps an independent lockfile beneath the root project.
+      # Install it outside the parent workspace, allowing build scripts from its frozen lockfile.
+      - run: pnpm --dir tools/ui-preview install --frozen-lockfile --ignore-workspace --config.dangerouslyAllowAllBuilds=true
 
       # Option A: tag and package.json version must already match.
       # The Chrome Web Store rejects uploads whose manifest version is not
