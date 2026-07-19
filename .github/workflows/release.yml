@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
+        with:
+          version: 11.7.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Option A: tag and package.json version must already match.
+      # The Chrome Web Store rejects uploads whose manifest version is not
+      # strictly greater than the published one, so a mismatch here would
+      # either fail at upload or ship the wrong version.
+      - name: Verify tag matches package.json version
+        run: |
+          set -euo pipefail
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          echo "package.json version: $PACKAGE_VERSION"
+          echo "tag version:           $TAG_VERSION"
+          if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PACKAGE_VERSION. Bump package.json before tagging."
+            exit 1
+          fi
+          echo "VERSION=$PACKAGE_VERSION" >> "$GITHUB_ENV"
+
+      - run: pnpm verify
+
+      - run: pnpm zip
+
+      - name: Upload and publish to Chrome Web Store
+        env:
+          CLIENT_ID: ${{ secrets.CHROME_WEBSTORE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CHROME_WEBSTORE_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CHROME_WEBSTORE_REFRESH_TOKEN }}
+          PUBLISHER_ID: ${{ secrets.CHROME_WEBSTORE_PUBLISHER_ID }}
+          EXTENSION_ID: ${{ secrets.CHROME_WEBSTORE_EXTENSION_ID }}
+        run: |
+          set -euo pipefail
+          ZIP_PATH=".output/notion-web-clipper-${VERSION}-chrome.zip"
+          if [ ! -f "$ZIP_PATH" ]; then
+            echo "::error::Expected zip at $ZIP_PATH not found."
+            ls -la .output
+            exit 1
+          fi
+          pnpm dlx chrome-webstore-upload-cli@4 --source "$ZIP_PATH" --extension-id "$EXTENSION_ID"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ZIP_PATH=".output/notion-web-clipper-${VERSION}-chrome.zip"
+          gh release create "$GITHUB_REF_NAME" "$ZIP_PATH" \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Chrome Web Store release ${VERSION}. The zip attached to this release is the exact artifact uploaded to the Chrome Web Store."
