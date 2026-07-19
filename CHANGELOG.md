@@ -4,6 +4,12 @@ All notable changes to Notion Web Clipper are documented in this file.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.0.3] - 2026-07-19
+
+### Added
+
+- Smart Clip now sends each Notion column's description to the AI provider and shows it as hint text in the review draft, so field values better match the column's intent.
+
 ## [1.0.2] - 2026-07-11
 
 ### Fixed
